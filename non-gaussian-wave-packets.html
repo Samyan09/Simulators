@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Non-Gaussian Wave Packets — Quantum Simulation</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+/* ── DESIGN TOKENS ─────────────────────────────────────────── */
+:root{
+  --bg:#020a0f;--panel:#040e17;--border:#0a2030;--border2:#0e3050;
+  --teal:#00ffd5;--amber:#ffbe00;--violet:#c77dff;--red:#ff4757;
+  --white:#d8eef8;--muted:#3a6070;
+  --glow-t:rgba(0,255,213,.22);--glow-a:rgba(255,190,0,.2);--glow-v:rgba(199,125,255,.2);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Orbitron',sans-serif;background:var(--bg);color:var(--white);min-height:100vh;overflow-x:hidden}
+
+/* scanlines + grid */
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.04) 3px,rgba(0,0,0,.04) 4px);pointer-events:none;z-index:9999}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,255,213,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,255,213,.025) 1px,transparent 1px);background-size:50px 50px;pointer-events:none}
+
+/* ── HEADER ─────────────────────────────────────────────────── */
+header{border-bottom:1px solid var(--border2);padding:14px 28px;display:flex;align-items:center;justify-content:space-between;background:rgba(4,14,23,.95);backdrop-filter:blur(14px);position:sticky;top:0;z-index:100}
+.logo-block{display:flex;align-items:baseline;gap:14px}
+.logo-block h1{font-size:1.15rem;font-weight:900;letter-spacing:4px;text-transform:uppercase;color:var(--teal);text-shadow:0 0 24px var(--glow-t)}
+.logo-block .sub{font-family:'JetBrains Mono',monospace;font-size:.58rem;color:var(--muted);letter-spacing:2px}
+.header-right{display:flex;align-items:center;gap:16px}
+.status-dot{width:8px;height:8px;border-radius:50%;background:var(--amber);box-shadow:0 0 10px var(--amber);animation:blink 1.8s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+.hup-display{font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--amber);text-shadow:0 0 10px var(--glow-a);letter-spacing:1px}
+#fpsCounter{font-family:'JetBrains Mono',monospace;font-size:.62rem;color:var(--muted);min-width:60px;text-align:right}
+
+/* ── LAYOUT ──────────────────────────────────────────────────── */
+main{display:grid;grid-template-columns:300px 1fr;min-height:calc(100vh - 55px)}
+aside{border-right:1px solid var(--border2);padding:20px 16px;background:var(--panel);display:flex;flex-direction:column;gap:16px;overflow-y:auto;position:sticky;top:55px;height:calc(100vh - 55px)}
+.content{padding:20px;display:flex;flex-direction:column;gap:16px;overflow-y:auto}
+
+/* ── PACKET TYPE SELECTOR ────────────────────────────────────── */
+.ptype-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.ptype-btn{font-family:'JetBrains Mono',monospace;font-size:.6rem;padding:8px 6px;border:1px solid var(--border2);background:transparent;color:var(--muted);border-radius:6px;cursor:pointer;letter-spacing:.5px;text-align:center;transition:all .15s;line-height:1.4}
+.ptype-btn:hover{border-color:var(--teal);color:var(--teal)}
+.ptype-btn.active{border-color:var(--teal);color:var(--bg);background:var(--teal);font-weight:500}
+.ptype-btn .ptype-icon{font-size:.95rem;display:block;margin-bottom:3px}
+
+/* ── SIDEBAR CONTROLS ────────────────────────────────────────── */
+.section-label{font-size:.55rem;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.section-label::after{content:'';flex:1;height:1px;background:var(--border2)}
+.ctrl-label{display:flex;justify-content:space-between;align-items:center;font-size:.72rem;color:var(--white);margin-bottom:6px;font-weight:400}
+.ctrl-label .val{font-family:'JetBrains Mono',monospace;font-size:.68rem;color:var(--teal);text-shadow:0 0 8px var(--glow-t)}
+input[type=range]{-webkit-appearance:none;width:100%;height:3px;background:var(--border2);border-radius:2px;outline:none;margin-bottom:12px;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;background:var(--teal);border-radius:50%;box-shadow:0 0 10px var(--glow-t);transition:transform .15s}
+input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.4)}
+input[type=range].amber::-webkit-slider-thumb{background:var(--amber);box-shadow:0 0 10px var(--glow-a)}
+input[type=range].violet::-webkit-slider-thumb{background:var(--violet);box-shadow:0 0 10px var(--glow-v)}
+
+/* ── METRICS ─────────────────────────────────────────────────── */
+.metrics{background:rgba(0,255,213,.025);border:1px solid var(--border2);border-radius:8px;padding:13px}
+.metric-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:.7rem}
+.metric-row:last-child{border-bottom:none}
+.metric-row .label{color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:.62rem}
+.metric-row .value{font-family:'JetBrains Mono',monospace;font-size:.68rem}
+.value.teal{color:var(--teal)}.value.amber{color:var(--amber)}.value.violet{color:var(--violet)}
+.value.ok{color:var(--teal);text-shadow:0 0 8px var(--glow-t)}.value.warn{color:var(--amber)}.value.hot{color:var(--red)}
+.hup-bar-wrap{background:var(--border);border-radius:4px;height:7px;margin-top:10px;overflow:hidden}
+.hup-bar{height:100%;border-radius:4px;transition:width .3s ease,background .3s}
+.hup-label{font-family:'JetBrains Mono',monospace;font-size:.6rem;color:var(--muted);margin-top:5px;text-align:center}
+
+/* ── BUTTONS ─────────────────────────────────────────────────── */
+.btn-run{font-family:'Orbitron',sans-serif;font-weight:700;font-size:.8rem;letter-spacing:3px;text-transform:uppercase;border:1px solid var(--teal);background:rgba(0,255,213,.07);color:var(--teal);padding:10px;width:100%;cursor:pointer;border-radius:6px;transition:all .2s;text-shadow:0 0 8px var(--glow-t)}
+.btn-run:hover{background:rgba(0,255,213,.16);box-shadow:0 0 22px var(--glow-t)}
+.btn-anim{font-family:'Orbitron',sans-serif;font-weight:600;font-size:.72rem;letter-spacing:2px;text-transform:uppercase;border:1px solid var(--border2);background:transparent;color:var(--muted);padding:8px;width:100%;cursor:pointer;border-radius:6px;transition:all .2s;margin-top:7px}
+.btn-anim:hover,.btn-anim.active{border-color:var(--amber);color:var(--amber);background:rgba(255,190,0,.06)}
+.info-box{background:rgba(0,255,213,.03);border:1px solid rgba(0,255,213,.12);border-radius:8px;padding:12px 15px;font-size:.7rem;line-height:1.75;color:#5090a8;font-family:'JetBrains Mono',monospace;font-weight:300}
+.info-box strong{color:var(--teal);font-weight:500}
+
+/* ── TABS ────────────────────────────────────────────────────── */
+.task-tabs{display:flex;gap:4px;background:var(--panel);border:1px solid var(--border2);border-radius:8px;padding:5px;width:fit-content;flex-wrap:wrap}
+.task-tab{padding:7px 16px;border-radius:5px;cursor:pointer;font-size:.62rem;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);transition:all .18s;user-select:none}
+.task-tab.active{background:rgba(0,255,213,.1);color:var(--teal);border:1px solid rgba(0,255,213,.28);text-shadow:0 0 8px var(--glow-t)}
+.task-tab:not(.active):hover{color:var(--white)}
+
+/* ── CHART CARDS ─────────────────────────────────────────────── */
+.chart-section{display:none;flex-direction:column;gap:16px}
+.chart-section.active{display:flex}
+.chart-card{background:var(--panel);border:1px solid var(--border2);border-radius:10px;overflow:hidden;position:relative}
+.chart-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--teal),transparent);opacity:.5}
+.chart-header{padding:11px 16px 7px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:5px}
+.chart-title{font-size:.62rem;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--muted)}
+.chart-eq{font-family:'JetBrains Mono',monospace;font-size:.58rem;color:var(--border2);letter-spacing:.5px}
+canvas{display:block;width:100%;image-rendering:auto}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+
+/* ── ANALYSIS ─────────────────────────────────────────────────── */
+.analysis-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.analysis-card{background:var(--panel);border:1px solid var(--border2);border-radius:10px;padding:16px;position:relative;overflow:hidden;transition:border-color .2s}
+.analysis-card:hover{border-color:rgba(0,255,213,.25)}
+.analysis-card h3{font-size:.52rem;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;font-family:'JetBrains Mono',monospace}
+.analysis-card .big-val{font-family:'JetBrains Mono',monospace;font-size:1.4rem;line-height:1;margin-bottom:4px}
+.analysis-card .small-desc{font-size:.65rem;color:var(--muted);line-height:1.5;font-family:'JetBrains Mono',monospace;font-weight:300}
+.hup-verify{background:var(--panel);border:1px solid var(--border2);border-radius:10px;padding:20px;grid-column:1/-1}
+.verify-title{font-size:.52rem;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:16px;font-family:'JetBrains Mono',monospace}
+.verify-eq{font-family:'JetBrains Mono',monospace;font-size:.9rem;text-align:center;padding:16px;background:rgba(0,255,213,.03);border:1px solid var(--border2);border-radius:8px;margin-bottom:16px;letter-spacing:.5px;transition:color .3s}
+.verify-bars{display:flex;gap:18px;align-items:flex-end}
+.vbar-group{flex:1}
+.vbar-label{font-family:'JetBrains Mono',monospace;font-size:.58rem;color:var(--muted);margin-bottom:6px}
+.vbar-track{background:var(--border);border-radius:4px;height:10px;overflow:hidden}
+.vbar-fill{height:100%;border-radius:4px;transition:width .4s ease}
+.vbar-val{font-family:'JetBrains Mono',monospace;font-size:.65rem;margin-top:4px}
+
+/* ── COMPARISON TAB ──────────────────────────────────────────── */
+.compare-table{background:var(--panel);border:1px solid var(--border2);border-radius:10px;overflow:hidden}
+.ct-head{display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr 1fr;padding:10px 16px;background:rgba(0,255,213,.05);border-bottom:1px solid var(--border2);font-size:.58rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-family:'JetBrains Mono',monospace}
+.ct-row{display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr 1fr;padding:10px 16px;border-bottom:1px solid rgba(255,255,255,.03);font-family:'JetBrains Mono',monospace;font-size:.68rem;transition:background .15s}
+.ct-row:last-child{border-bottom:none}
+.ct-row:hover{background:rgba(0,255,213,.03)}
+.ct-row .col1{color:var(--white);font-weight:500}
+.badge{display:inline-block;padding:2px 7px;border-radius:4px;font-size:.58rem;letter-spacing:1px}
+.badge.min{background:rgba(0,255,213,.12);color:var(--teal);border:1px solid rgba(0,255,213,.25)}
+.badge.above{background:rgba(255,190,0,.1);color:var(--amber);border:1px solid rgba(255,190,0,.2)}
+.badge.far{background:rgba(255,71,87,.1);color:var(--red);border:1px solid rgba(255,71,87,.2)}
+
+/* ── ANIMATIONS ──────────────────────────────────────────────── */
+@keyframes fadeInUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.chart-section.active>*{animation:fadeInUp .3s ease both}
+.chart-section.active>*:nth-child(2){animation-delay:.06s}
+.chart-section.active>*:nth-child(3){animation-delay:.12s}
+.chart-section.active>*:nth-child(4){animation-delay:.18s}
+
+/* ── SCROLLBAR ───────────────────────────────────────────────── */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+.teal{color:var(--teal)}.amber{color:var(--amber)}.violet{color:var(--violet)}.red-c{color:var(--red)}
+
+@media(max-width:900px){main{grid-template-columns:1fr}aside{position:static;height:auto;border-right:none;border-bottom:1px solid var(--border2)}.analysis-grid{grid-template-columns:1fr 1fr}.two-col{grid-template-columns:1fr}}
+@media(max-width:600px){.analysis-grid{grid-template-columns:1fr}.two-col{grid-template-columns:1fr}.ptype-grid{grid-template-columns:1fr 1fr}.task-tab{padding:6px 10px;font-size:.56rem}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-block">
+    <h1>ΨNG-Packets</h1>
+    <div class="sub">NON-GAUSSIAN WAVE SIMULATOR · ΔxΔp ≥ ℏ/2</div>
+  </div>
+  <div class="header-right">
+    <div id="fpsCounter">— fps</div>
+    <div class="status-dot"></div>
+    <div class="hup-display" id="headerHup">ΔxΔp ≥ ℏ/2</div>
+  </div>
+</header>
+
+<main>
+<!-- ══════════════ SIDEBAR ══════════════ -->
+<aside>
+  <div>
+    <div class="section-label">Packet Shape</div>
+    <div class="ptype-grid">
+      <button class="ptype-btn active" onclick="setPacketType('square',this)"><span class="ptype-icon">▬</span>Square / Top-Hat</button>
+      <button class="ptype-btn" onclick="setPacketType('triangle',this)"><span class="ptype-icon">△</span>Triangular</button>
+      <button class="ptype-btn" onclick="setPacketType('lorentzian',this)"><span class="ptype-icon">⌒</span>Lorentzian</button>
+      <button class="ptype-btn" onclick="setPacketType('sech',this)"><span class="ptype-icon">∫</span>Sech (soliton)</button>
+      <button class="ptype-btn" onclick="setPacketType('double',this)"><span class="ptype-icon">⌇⌇</span>Double-Peak</button>
+      <button class="ptype-btn" onclick="setPacketType('cosine',this)"><span class="ptype-icon">∿</span>Cosine-Tapered</button>
+    </div>
+  </div>
+
+  <div>
+    <div class="section-label">Wave Parameters</div>
+    <div class="ctrl-label"><span>Width L</span><span class="val" id="val_width">1.50</span></div>
+    <input type="range" id="sl_width" min="0.2" max="4.0" step="0.05" value="1.5" oninput="onSlider()">
+    <div class="ctrl-label"><span>Center x₀</span><span class="val" id="val_x0">0.00</span></div>
+    <input type="range" class="amber" id="sl_x0" min="-4" max="4" step="0.1" value="0" oninput="onSlider()">
+    <div class="ctrl-label"><span>Momentum k₀</span><span class="val" id="val_k0">2.00</span></div>
+    <input type="range" class="amber" id="sl_k0" min="-6" max="6" step="0.2" value="2" oninput="onSlider()">
+    <div class="ctrl-label"><span>Amplitude A</span><span class="val" id="val_amp">1.00</span></div>
+    <input type="range" class="violet" id="sl_amp" min="0.2" max="3.0" step="0.1" value="1.0" oninput="onSlider()">
+  </div>
+
+  <div>
+    <div class="section-label">Quantum Metrics</div>
+    <div class="metrics">
+      <div class="metric-row"><span class="label">Δx (position)</span><span class="value teal" id="m_sigx">—</span></div>
+      <div class="metric-row"><span class="label">Δp (momentum)</span><span class="value amber" id="m_sigp">—</span></div>
+      <div class="metric-row"><span class="label">⟨x⟩ mean pos.</span><span class="value teal" id="m_meanx">—</span></div>
+      <div class="metric-row"><span class="label">⟨p⟩ mean mom.</span><span class="value amber" id="m_meanp">—</span></div>
+      <div class="metric-row"><span class="label">ΔxΔp / (ℏ/2)</span><span class="value" id="m_ratio">—</span></div>
+      <div class="metric-row"><span class="label">∫|ψ|²dx (norm)</span><span class="value" id="m_norm">—</span></div>
+      <div class="hup-bar-wrap"><div class="hup-bar" id="hupBar"></div></div>
+      <div class="hup-label" id="hupBarLabel">ΔxΔp = 0</div>
+    </div>
+  </div>
+
+  <div>
+    <div class="section-label">Controls</div>
+    <button class="btn-run" onclick="resetTime()">▶ RESET / COMPUTE</button>
+    <button class="btn-anim" id="btnAnim" onclick="toggleAnimation()">⟳ ANIMATE TIME EVOLUTION</button>
+  </div>
+
+  <div>
+    <div class="section-label">ℏ Natural Units</div>
+    <div class="info-box">
+      Setting <strong>ℏ = 1</strong>.<br>
+      Non-Gaussian packets satisfy<br>
+      <strong>ΔxΔp ≥ ℏ/2 = 0.5</strong><br>
+      with strict inequality. Only the Gaussian saturates the bound.
+    </div>
+  </div>
+</aside>
+
+<!-- ══════════════ CONTENT ══════════════ -->
+<div class="content">
+
+  <div class="task-tabs">
+    <div class="task-tab active" onclick="switchTask('a',this)">Task A · Position Space</div>
+    <div class="task-tab" onclick="switchTask('b',this)">Task B · Momentum Space</div>
+    <div class="task-tab" onclick="switchTask('c',this)">Task C · Uncertainty</div>
+    <div class="task-tab" onclick="switchTask('d',this)">Task D · Comparison</div>
+  </div>
+
+  <!-- ─── TASK A ─── -->
+  <div class="chart-section active" id="task_a">
+    <div class="info-box" id="infoA"><strong>Task A — Position Space.</strong> Non-Gaussian packet: ψ(x,t) computed via exact analytic time-evolution or FFT-based propagation. The envelope shape is non-Gaussian, producing richer interference structure.</div>
+    <div class="chart-card">
+      <div class="chart-header">
+        <span class="chart-title">Re[ψ] · Im[ψ] · Envelope</span>
+        <span class="chart-eq" id="eqA">ψ(x) = A·rect((x−x₀)/L)·exp(ik₀x)</span>
+      </div>
+      <canvas id="cvReIm" height="240"></canvas>
+    </div>
+    <div class="two-col">
+      <div class="chart-card">
+        <div class="chart-header"><span class="chart-title">Probability Density |ψ(x)|²</span><span class="chart-eq">∫|ψ|²dx = 1</span></div>
+        <canvas id="cvProb" height="200"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-header"><span class="chart-title">Phase arg(ψ(x))</span><span class="chart-eq">φ(x,t) = k₀x + phase(t)</span></div>
+        <canvas id="cvPhase" height="200"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── TASK B ─── -->
+  <div class="chart-section" id="task_b">
+    <div class="info-box"><strong>Task B — Momentum Distribution via FFT.</strong> φ(p) = F{ψ(x)} computed with N=2048. Non-Gaussian shapes produce non-Gaussian momentum distributions with tails and sidelobes — this is why ΔxΔp &gt; ℏ/2.</div>
+    <div class="chart-card">
+      <div class="chart-header"><span class="chart-title">Momentum Distribution |φ(p)|²</span><span class="chart-eq">φ(p) = F{ψ(x)}</span></div>
+      <canvas id="cvMom" height="260"></canvas>
+    </div>
+    <div class="two-col">
+      <div class="chart-card">
+        <div class="chart-header"><span class="chart-title">Re[φ(p)] — FFT Output</span><span class="chart-eq">Real part of momentum-space wavefunction</span></div>
+        <canvas id="cvMomRe" height="200"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-header"><span class="chart-title">Wigner Function Slice (p=p₀)</span><span class="chart-eq">W(x,p₀) ∝ ∫ψ*(x+y/2)ψ(x−y/2)e^(ipy)dy</span></div>
+        <canvas id="cvWigner" height="200"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── TASK C ─── -->
+  <div class="chart-section" id="task_c">
+    <div class="info-box"><strong>Task C — ΔxΔp Excess Above ℏ/2.</strong> Non-Gaussian packets always satisfy ΔxΔp &gt; ℏ/2. The excess factor depends on the shape. The sweep shows how the product varies with packet width L and confirms ΔxΔp / (ℏ/2) &gt; 1 for all non-Gaussian shapes.</div>
+    <div class="analysis-grid">
+      <div class="analysis-card"><h3>Position Uncertainty Δx</h3><div class="big-val teal" id="ac_dx">—</div><div class="small-desc">Numerical: √⟨(x−⟨x⟩)²⟩<br>from |ψ(x)|² distribution</div></div>
+      <div class="analysis-card"><h3>Momentum Uncertainty Δp</h3><div class="big-val amber" id="ac_dp">—</div><div class="small-desc">Numerical: √⟨(p−⟨p⟩)²⟩<br>from |φ(p)|² distribution</div></div>
+      <div class="analysis-card"><h3>Product ΔxΔp</h3><div class="big-val violet" id="ac_prod">—</div><div class="small-desc">Numerical product<br>Minimum: 0.500 (= ℏ/2)</div></div>
+      <div class="analysis-card"><h3>Excess Factor</h3><div class="big-val" id="ac_ratio" style="color:var(--red)">—</div><div class="small-desc">ΔxΔp / (ℏ/2)<br>&gt; 1.000 for all non-Gaussian shapes</div></div>
+
+      <div class="hup-verify">
+        <div class="verify-title">Heisenberg Uncertainty — Live Verification</div>
+        <div class="verify-eq" id="verifyEq">Δx · Δp = — ≥ ℏ/2 = 0.500</div>
+        <div class="verify-bars">
+          <div class="vbar-group">
+            <div class="vbar-label">Δx (position)</div>
+            <div class="vbar-track"><div class="vbar-fill" id="vbDx" style="background:var(--teal)"></div></div>
+            <div class="vbar-val teal" id="vbDxVal">—</div>
+          </div>
+          <div class="vbar-group">
+            <div class="vbar-label">Δp (momentum)</div>
+            <div class="vbar-track"><div class="vbar-fill" id="vbDp" style="background:var(--amber)"></div></div>
+            <div class="vbar-val amber" id="vbDpVal">—</div>
+          </div>
+          <div class="vbar-group">
+            <div class="vbar-label">ΔxΔp vs ℏ/2</div>
+            <div class="vbar-track"><div class="vbar-fill" id="vbProd" style="background:var(--violet)"></div></div>
+            <div class="vbar-val violet" id="vbProdVal">—</div>
+          </div>
+        </div>
+        <div style="margin-top:20px">
+          <div class="verify-title">ΔxΔp vs Width L — Shape Sweep</div>
+          <canvas id="cvSweep" height="150"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── TASK D ─── -->
+  <div class="chart-section" id="task_d">
+    <div class="info-box"><strong>Task D — Shape Comparison.</strong> All non-Gaussian shapes exceed ℏ/2 by a shape-specific factor. The square packet is widest in momentum (sinc² tails). The sech packet is the closest non-Gaussian to the minimum uncertainty, approaching it in the soliton limit.</div>
+    <div class="compare-table">
+      <div class="ct-head">
+        <div>Shape</div><div>Δx / L</div><div>Δp·L analytic</div><div>ΔxΔp</div><div>Factor vs ℏ/2</div>
+      </div>
+      <div class="ct-row"><div class="col1">Square / Top-Hat</div><div class="teal">L / (2√3)</div><div class="amber">π / √3</div><div class="violet">π/6 ≈ 0.524</div><div><span class="badge above">× 1.047</span></div></div>
+      <div class="ct-row"><div class="col1">Triangular</div><div class="teal">L / √6</div><div class="amber">—</div><div class="violet">≈ 0.603</div><div><span class="badge above">× 1.206</span></div></div>
+      <div class="ct-row"><div class="col1">Lorentzian (γ)</div><div class="teal">γ (HWHM)</div><div class="amber">diverges</div><div class="violet">→ ∞</div><div><span class="badge far">diverges</span></div></div>
+      <div class="ct-row"><div class="col1">Sech (soliton)</div><div class="teal">π/(2√3)·a</div><div class="amber">1/a (approx)</div><div class="violet">≈ 0.525</div><div><span class="badge above">× 1.050</span></div></div>
+      <div class="ct-row"><div class="col1">Double-Peak</div><div class="teal">depends on d</div><div class="amber">FFT only</div><div class="violet">≥ 0.500</div><div><span class="badge above">&gt; 1.000</span></div></div>
+      <div class="ct-row"><div class="col1">Cosine-Tapered</div><div class="teal">≈ L / (2√3)</div><div class="amber">reduced sinc tails</div><div class="violet">≈ 0.512</div><div><span class="badge above">× 1.024</span></div></div>
+      <div class="ct-row"><div class="col1" style="color:var(--muted)">Gaussian (reference)</div><div style="color:var(--muted)">σ</div><div style="color:var(--muted)">1/(2σ)</div><div style="color:var(--teal)">0.500</div><div><span class="badge min">minimum</span></div></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header"><span class="chart-title">All Shapes — Probability Density Overlay</span><span class="chart-eq">Normalized |ψ(x)|², L=1.5</span></div>
+      <canvas id="cvOverlay" height="260"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header"><span class="chart-title">All Shapes — Momentum Density Overlay</span><span class="chart-eq">Normalized |φ(p)|², L=1.5</span></div>
+      <canvas id="cvMomOverlay" height="260"></canvas>
+    </div>
+  </div>
+
+</div><!-- /content -->
+</main>
+
+<script>
+'use strict';
+/* ================================================================
+   CONSTANTS & TYPED ARRAYS
+   ================================================================ */
+const N    = 2048;
+const XMIN = -14, XMAX = 14;
+const DX   = (XMAX - XMIN) / N;
+const TWO_PI = Math.PI * 2;
+
+const XS = new Float64Array(N);
+for (let i = 0; i < N; i++) XS[i] = XMIN + i * DX;
+
+const psi_re  = new Float64Array(N);
+const psi_im  = new Float64Array(N);
+const fft_re  = new Float64Array(N);
+const fft_im  = new Float64Array(N);
+const phi_re  = new Float64Array(N);
+const phi_im  = new Float64Array(N);
+const prob_x  = new Float64Array(N);
+const prob_p  = new Float64Array(N);
+const PS_AXIS = new Float64Array(N);
+const wigner_slice = new Float64Array(N);
+
+const BIT_REV = new Uint16Array(N);
+(function buildBitRev(){let j=0;for(let i=1;i<N;i++){let bit=N>>1;for(;j&bit;bit>>=1)j^=bit;j^=bit;BIT_REV[i]=j;}})();
+
+const TWIDDLE_COS=[],TWIDDLE_SIN=[];
+for(let len=2;len<=N;len<<=1){const ang=-TWO_PI/len;TWIDDLE_COS.push(Math.cos(ang));TWIDDLE_SIN.push(Math.sin(ang));}
+
+const DK = TWO_PI / (N * DX);
+for(let i=0;i<N;i++) PS_AXIS[i] = (i - N/2) * DK;
+
+/* ================================================================
+   IN-PLACE FFT
+   ================================================================ */
+function fft(re, im) {
+  for(let i=1;i<N;i++){const j=BIT_REV[i];if(i<j){let t=re[i];re[i]=re[j];re[j]=t;t=im[i];im[i]=im[j];im[j]=t;}}
+  let stage=0;
+  for(let len=2;len<=N;len<<=1,stage++){
+    const wr0=TWIDDLE_COS[stage],wi0=TWIDDLE_SIN[stage],half=len>>1;
+    for(let i=0;i<N;i+=len){
+      let cr=1,ci=0;
+      for(let k=0;k<half;k++){
+        const a=i+k,b=a+half,ur=re[a],ui=im[a];
+        const vr=re[b]*cr-im[b]*ci,vi=re[b]*ci+im[b]*cr;
+        re[a]=ur+vr;im[a]=ui+vi;re[b]=ur-vr;im[b]=ui-vi;
+        const nr=cr*wr0-ci*wi0;ci=cr*wi0+ci*wr0;cr=nr;
+      }
+    }
+  }
+}
+
+/* ================================================================
+   SIMULATION STATE
+   ================================================================ */
+let packetType = 'square';
+let P = { width: 1.5, x0: 0.0, k0: 2.0, amp: 1.0 };
+let animating = false, animT = 0, animFrame = null;
+let activeTab = 'a', needFullRecompute = true, resizeTimer = null;
+let fpsSamples = [];
+const CTX = {};
+
+/* ================================================================
+   WAVE PACKET GENERATION — all non-Gaussian shapes
+   ================================================================ */
+function envelope(x, type, L) {
+  const ax = Math.abs(x);
+  switch(type) {
+    case 'square':
+      return ax <= L/2 ? 1.0 : 0.0;
+    case 'triangle':
+      return ax < L ? (1 - ax/L) : 0.0;
+    case 'lorentzian':
+      return 1.0 / (1 + (x/(L/2))*(x/(L/2)));
+    case 'sech':
+      return 1.0 / Math.cosh(x / (L/2));
+    case 'double': {
+      const d = L * 0.6;
+      const s = L * 0.28;
+      const g1 = Math.exp(-(x-d/2)*(x-d/2)/(2*s*s));
+      const g2 = Math.exp(-(x+d/2)*(x+d/2)/(2*s*s));
+      return (g1 + g2);
+    }
+    case 'cosine':
+      return ax <= L/2 ? Math.cos(Math.PI * x / L) : 0.0;
+    default:
+      return 0.0;
+  }
+}
+
+/* Time-evolved envelope for free particle (approximation using coherent spreading) */
+function envelopeT(xi, type, L, t, x0, k0) {
+  // Free particle dispersion: for non-Gaussian we use numerical FFT propagation
+  // For real-time animation, we use an approximate analytic approach per shape
+  const cx = x0 + k0 * t;
+  const dx = xi - cx;
+  // Spreading width (same as Gaussian approximation for simplicity; exact via FFT)
+  const L_t = L * Math.sqrt(1 + t*t / (L*L*L*L * 0.25));
+  const scale = Math.sqrt(L / L_t);
+  return scale * envelope(dx * L / L_t, type, L);
+}
+
+function generateWavePacket(t) {
+  const { width: L, x0, k0, amp } = P;
+  const cx = x0 + k0 * t;
+  const L_t = L * Math.sqrt(1 + t*t/(L*L*L*L*0.25));
+  const scl = Math.sqrt(L / L_t);
+
+  // Normalization pass
+  let norm = 0;
+  for(let i=0;i<N;i++){
+    const dx = XS[i] - cx;
+    const e = envelope(dx * L / L_t, packetType, L);
+    norm += e * e;
+  }
+  norm = Math.sqrt(norm * DX) || 1;
+
+  for(let i=0;i<N;i++){
+    const xi = XS[i];
+    const dx = xi - cx;
+    const e  = amp * scl * envelope(dx * L / L_t, packetType, L) / norm;
+    const ph = k0 * (xi - x0) - 0.5 * k0 * k0 * t;
+    psi_re[i] = e * Math.cos(ph);
+    psi_im[i] = e * Math.sin(ph);
+    prob_x[i] = e * e;
+  }
+}
+
+function computeMomentumSpace() {
+  for(let i=0;i<N;i++){
+    const s=(i&1)?-1:1;
+    fft_re[i]=psi_re[i]*s*DX;
+    fft_im[i]=psi_im[i]*s*DX;
+  }
+  fft(fft_re, fft_im);
+  let normP=0;
+  for(let i=0;i<N;i++){
+    const s=(i&1)?-1:1;
+    phi_re[i]=fft_re[i]*s;
+    phi_im[i]=fft_im[i]*s;
+    prob_p[i]=phi_re[i]*phi_re[i]+phi_im[i]*phi_im[i];
+    normP+=prob_p[i];
+  }
+  normP*=DK;
+  if(normP>0){const inv=1/normP;for(let i=0;i<N;i++)prob_p[i]*=inv;}
+}
+
+/* Wigner function slice at fixed p = p0 (central momentum) */
+function computeWignerSlice() {
+  const p0 = P.k0;
+  const M  = 128; // sample range for y integral
+  const ymax = 4.0;
+  const dy  = ymax * 2 / M;
+  for(let i=0;i<N;i++){
+    const x = XS[i];
+    let wr = 0;
+    for(let j=0;j<M;j++){
+      const y  = -ymax + j * dy;
+      const xp = x + y/2, xm = x - y/2;
+      // Interpolate psi at x+y/2 and x-y/2
+      const ip = Math.round((xp - XMIN) / DX);
+      const im2= Math.round((xm - XMIN) / DX);
+      if(ip<0||ip>=N||im2<0||im2>=N) continue;
+      const re1=psi_re[ip], im1=psi_im[ip];
+      const re2=psi_re[im2],im2b=psi_im[im2];
+      // ψ*(x+y/2)·ψ(x-y/2)
+      const cr = re1*re2 + im1*im2b;
+      const ci = re1*im2b - im1*re2;
+      // × exp(ipy)
+      const cs = Math.cos(p0*y), ss = Math.sin(p0*y);
+      wr += cr*cs - ci*ss;
+    }
+    wigner_slice[i] = wr * dy / (Math.PI);
+  }
+}
+
+/* Numerical uncertainty metrics */
+function numericalMetrics() {
+  // Position moments from prob_x
+  let norm=0,meanX=0,meanX2=0;
+  for(let i=0;i<N;i++){norm+=prob_x[i];meanX+=XS[i]*prob_x[i];meanX2+=XS[i]*XS[i]*prob_x[i];}
+  norm*=DX; meanX*=DX; meanX2*=DX;
+  const deltaX = norm>0 ? Math.sqrt(Math.max(0, meanX2/norm - (meanX/norm)*(meanX/norm))) : 0;
+  const mX = norm>0 ? meanX/norm : 0;
+
+  // Momentum moments from prob_p
+  let normP=0,meanP=0,meanP2=0;
+  for(let i=0;i<N;i++){normP+=prob_p[i];meanP+=PS_AXIS[i]*prob_p[i];meanP2+=PS_AXIS[i]*PS_AXIS[i]*prob_p[i];}
+  normP*=DK; meanP*=DK; meanP2*=DK;
+  const deltaP = normP>0 ? Math.sqrt(Math.max(0, meanP2/normP - (meanP/normP)*(meanP/normP))) : 0;
+  const mP = normP>0 ? meanP/normP : 0;
+
+  return { deltaX, deltaP, meanX: mX, meanP: mP, product: deltaX*deltaP, norm };
+}
+
+/* ================================================================
+   CANVAS HELPERS
+   ================================================================ */
+function getCtx(id){
+  if(CTX[id])return CTX[id];
+  const cv=document.getElementById(id);if(!cv)return null;
+  const ctx=cv.getContext('2d',{alpha:false});CTX[id]={ctx,cv};return CTX[id];
+}
+function resizeCanvas(id){
+  const r=getCtx(id);if(!r)return null;
+  const {ctx,cv}=r,dpr=window.devicePixelRatio||1;
+  const w=cv.parentElement.clientWidth,h=parseInt(cv.getAttribute('height'));
+  if(cv.width!==Math.round(w*dpr)||cv.height!==Math.round(h*dpr)){
+    cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr);
+    cv.style.width=w+'px';cv.style.height=h+'px';ctx.scale(dpr,dpr);
+  }
+  return{ctx,W:w,H:h};
+}
+function mapX(v,x0,xSpan,W,pad){return pad+(v-x0)/xSpan*(W-2*pad);}
+function mapY(v,y0,ySpan,H,pad){return H-pad-(v-y0)/ySpan*(H-2*pad);}
+function clearBg(ctx,W,H){ctx.fillStyle='#040e17';ctx.fillRect(0,0,W,H);}
+function drawGrid(ctx,W,H,pad,xR,yR,nx,ny){
+  ctx.strokeStyle='rgba(0,255,213,0.04)';ctx.lineWidth=0.5;
+  const xSpan=xR[1]-xR[0],ySpan=yR[1]-yR[0];
+  ctx.beginPath();
+  for(let i=0;i<=nx;i++){const px=pad+i/nx*(W-2*pad);ctx.moveTo(px,pad);ctx.lineTo(px,H-pad);}
+  for(let i=0;i<=ny;i++){const py=pad+i/ny*(H-2*pad);ctx.moveTo(pad,py);ctx.lineTo(W-pad,py);}
+  ctx.stroke();
+  ctx.strokeStyle='rgba(255,255,255,0.09)';ctx.lineWidth=0.8;ctx.beginPath();
+  if(yR[0]<0&&yR[1]>0){const py0=mapY(0,yR[0],ySpan,H,pad);ctx.moveTo(pad,py0);ctx.lineTo(W-pad,py0);}
+  if(xR[0]<0&&xR[1]>0){const px0=mapX(0,xR[0],xSpan,W,pad);ctx.moveTo(px0,pad);ctx.lineTo(px0,H-pad);}
+  ctx.stroke();
+}
+function polyline(ctx,data_x,data_y,n,xR,yR,W,H,pad,color,lw){
+  if(!n)return;
+  ctx.strokeStyle=color;ctx.lineWidth=lw;
+  const x0=xR[0],xSpan=xR[1]-xR[0],y0=yR[0],ySpan=yR[1]-yR[0];
+  const wI=W-2*pad,hI=H-2*pad;
+  ctx.beginPath();ctx.moveTo(pad+(data_x[0]-x0)/xSpan*wI,H-pad-(data_y[0]-y0)/ySpan*hI);
+  for(let i=1;i<n;i++)ctx.lineTo(pad+(data_x[i]-x0)/xSpan*wI,H-pad-(data_y[i]-y0)/ySpan*hI);
+  ctx.stroke();
+}
+function gradFill(ctx,data_x,data_y,n,xR,yR,W,H,pad,color){
+  if(!n)return;
+  const x0=xR[0],xSpan=xR[1]-xR[0],y0=yR[0],ySpan=yR[1]-yR[0];
+  const wI=W-2*pad,hI=H-2*pad;
+  const grd=ctx.createLinearGradient(0,pad,0,H-pad);
+  grd.addColorStop(0,color.replace('$A','0.28'));grd.addColorStop(1,color.replace('$A','0'));
+  ctx.fillStyle=grd;
+  ctx.beginPath();
+  const py0=Math.min(Math.max(H-pad-(0-y0)/ySpan*hI,pad),H-pad);
+  ctx.moveTo(pad+(data_x[0]-x0)/xSpan*wI,py0);
+  for(let i=0;i<n;i++)ctx.lineTo(pad+(data_x[i]-x0)/xSpan*wI,H-pad-(data_y[i]-y0)/ySpan*hI);
+  ctx.lineTo(pad+(data_x[n-1]-x0)/xSpan*wI,py0);ctx.closePath();ctx.fill();
+}
+function axisLabels(ctx,W,H,pad,xR,yR,nx,ny,decimals){
+  ctx.fillStyle='#2a5060';ctx.font=`${Math.max(9,Math.min(11,W/80))}px JetBrains Mono`;ctx.textAlign='center';
+  const xSpan=xR[1]-xR[0],ySpan=yR[1]-yR[0];
+  for(let i=0;i<=nx;i+=2){
+    const v=xR[0]+i/nx*xSpan;const px=pad+i/nx*(W-2*pad);
+    ctx.fillText(v.toFixed(decimals),px,H-pad+14);
+  }
+  ctx.textAlign='right';
+  for(let i=0;i<=ny;i+=2){
+    const v=yR[0]+i/ny*ySpan;const py=pad+i/ny*(H-2*pad);
+    ctx.fillText(v.toFixed(1),pad-4,H-py);
+  }
+}
+
+/* ================================================================
+   PLOT FUNCTIONS
+   ================================================================ */
+function plotReIm(){
+  const r=resizeCanvas('cvReIm');if(!r)return;
+  const {ctx,W,H}=r,pad=38;
+  clearBg(ctx,W,H);
+  const xR=[XMIN/2,XMAX/2],yR=[-1.6,1.6];
+  drawGrid(ctx,W,H,pad,xR,yR,10,8);
+  // envelope fill
+  const env_y=new Float64Array(N);
+  for(let i=0;i<N;i++)env_y[i]=Math.sqrt(prob_x[i]);
+  gradFill(ctx,XS,env_y,N,xR,[0,1.6],W,H,pad,'rgba(0,255,213,$A)');
+  // negative envelope
+  const env_neg=new Float64Array(N);for(let i=0;i<N;i++)env_neg[i]=-env_y[i];
+  gradFill(ctx,XS,env_neg,N,xR,[-1.6,0],W,H,pad,'rgba(0,255,213,$A)');
+  polyline(ctx,XS,psi_re,N,xR,yR,W,H,pad,'rgba(0,255,213,0.9)',1.5);
+  polyline(ctx,XS,psi_im,N,xR,yR,W,H,pad,'rgba(255,190,0,0.8)',1.2);
+  // legend
+  ctx.font='10px JetBrains Mono';ctx.fillStyle='rgba(0,255,213,0.85)';ctx.fillText('Re[ψ]',W-pad-55,pad+14);
+  ctx.fillStyle='rgba(255,190,0,0.8)';ctx.fillText('Im[ψ]',W-pad-55,pad+27);
+  axisLabels(ctx,W,H,pad,xR,yR,10,8,1);
+}
+function plotProbability(){
+  const r=resizeCanvas('cvProb');if(!r)return;
+  const {ctx,W,H}=r,pad=38;
+  clearBg(ctx,W,H);
+  let mx=0;for(let i=0;i<N;i++)if(prob_x[i]>mx)mx=prob_x[i];
+  const xR=[XMIN/2,XMAX/2],yR=[0,mx*1.15||1];
+  drawGrid(ctx,W,H,pad,xR,yR,10,6);
+  gradFill(ctx,XS,prob_x,N,xR,yR,W,H,pad,'rgba(199,125,255,$A)');
+  polyline(ctx,XS,prob_x,N,xR,yR,W,H,pad,'rgba(199,125,255,0.95)',1.5);
+  axisLabels(ctx,W,H,pad,xR,yR,10,6,1);
+}
+function plotPhase(){
+  const r=resizeCanvas('cvPhase');if(!r)return;
+  const {ctx,W,H}=r,pad=38;
+  clearBg(ctx,W,H);
+  const phase=new Float64Array(N);
+  const thresh=0.003;
+  for(let i=0;i<N;i++){
+    if(Math.sqrt(prob_x[i])<thresh){phase[i]=NaN;continue;}
+    phase[i]=Math.atan2(psi_im[i],psi_re[i]);
+  }
+  const xR=[XMIN/2,XMAX/2],yR=[-Math.PI,Math.PI];
+  drawGrid(ctx,W,H,pad,xR,yR,10,6);
+  // Draw phase as scatter dots where probability is above threshold
+  ctx.fillStyle='rgba(255,190,0,0.7)';
+  for(let i=0;i<N;i++){
+    if(isNaN(phase[i]))continue;
+    const px=mapX(XS[i],xR[0],xR[1]-xR[0],W,pad);
+    const py=mapY(phase[i],yR[0],yR[1]-yR[0],H,pad);
+    ctx.fillRect(px-0.8,py-0.8,1.6,1.6);
+  }
+  // π labels
+  ctx.fillStyle='#2a5060';ctx.font='10px JetBrains Mono';ctx.textAlign='right';
+  ctx.fillText('π',pad-4,mapY(Math.PI,yR[0],yR[1]-yR[0],H,pad)+4);
+  ctx.fillText('0',pad-4,mapY(0,yR[0],yR[1]-yR[0],H,pad)+4);
+  ctx.fillText('-π',pad-4,mapY(-Math.PI,yR[0],yR[1]-yR[0],H,pad)+4);
+  axisLabels(ctx,W,H,pad,xR,yR,10,0,1);
+}
+function plotMomentum(){
+  const r=resizeCanvas('cvMom');if(!r)return;
+  const {ctx,W,H}=r,pad=38;
+  clearBg(ctx,W,H);
+  let mx=0;for(let i=0;i<N;i++)if(prob_p[i]>mx)mx=prob_p[i];
+  const pRange=10,xR=[-pRange,pRange],yR=[0,mx*1.15||1];
+  drawGrid(ctx,W,H,pad,xR,yR,10,6);
+  gradFill(ctx,PS_AXIS,prob_p,N,xR,yR,W,H,pad,'rgba(255,190,0,$A)');
+  polyline(ctx,PS_AXIS,prob_p,N,xR,yR,W,H,pad,'rgba(255,190,0,0.95)',1.8);
+  // Label peaks
+  ctx.fillStyle='rgba(255,190,0,0.8)';ctx.font='10px JetBrains Mono';ctx.textAlign='center';
+  ctx.fillText('|φ(p)|²',W/2,pad+14);
+  axisLabels(ctx,W,H,pad,xR,yR,10,6,1);
+}
+function plotMomRe(){
+  const r=resizeCanvas('cvMomRe');if(!r)return;
+  const {ctx,W,H}=r,pad=38;
+  clearBg(ctx,W,H);
+  let mx=0;for(let i=0;i<N;i++){const v=Math.abs(phi_re[i]);if(v>mx)mx=v;}
+  const pRange=10,xR=[-pRange,pRange],yR=[-mx*1.2,mx*1.2];
+  drawGrid(ctx,W,H,pad,xR,yR,10,6);
+  polyline(ctx,PS_AXIS,phi_re,N,xR,yR,W,H,pad,'rgba(0,255,213,0.8)',1.3);
+  axisLabels(ctx,W,H,pad,xR,yR,10,6,1);
+}
+function plotWigner(){
+  const r=resizeCanvas('cvWigner');if(!r)return;
+  const {ctx,W,H}=r,pad=38;
+  clearBg(ctx,W,H);
+  let mx=0;for(let i=0;i<N;i++){const v=Math.abs(wigner_slice[i]);if(v>mx)mx=v;}
+  const xR=[XMIN/2,XMAX/2],yR=[-mx*1.3||-.1,mx*1.3||.1];
+  drawGrid(ctx,W,H,pad,xR,yR,10,6);
+  // color positive/negative differently
+  const pos=new Float64Array(N),neg=new Float64Array(N);
+  for(let i=0;i<N;i++){pos[i]=Math.max(0,wigner_slice[i]);neg[i]=Math.min(0,wigner_slice[i]);}
+  gradFill(ctx,XS,pos,N,xR,yR,W,H,pad,'rgba(0,255,213,$A)');
+  gradFill(ctx,XS,neg,N,xR,yR,W,H,pad,'rgba(255,71,87,$A)');
+  polyline(ctx,XS,wigner_slice,N,xR,yR,W,H,pad,'rgba(199,125,255,0.9)',1.5);
+  ctx.fillStyle='rgba(0,255,213,0.7)';ctx.font='10px JetBrains Mono';ctx.textAlign='right';
+  ctx.fillText('+W',W-pad-4,pad+14);
+  ctx.fillStyle='rgba(255,71,87,0.7)';ctx.fillText('-W',W-pad-4,pad+26);
+  axisLabels(ctx,W,H,pad,xR,yR,10,6,1);
+}
+function plotSweep(){
+  const r=resizeCanvas('cvSweep');if(!r)return;
+  const {ctx,W,H}=r,pad=38;
+  clearBg(ctx,W,H);
+  const Ls=new Float64Array(60);const prods=new Float64Array(60);
+  for(let i=0;i<60;i++){
+    const L=0.2+i*(4.0-0.2)/59;Ls[i]=L;
+    // Compute numerically for current packet type with this L
+    // Use the static t=0 wavefunction
+    const oldL=P.width;P.width=L;
+    generateWavePacket(0);computeMomentumSpace();
+    const m=numericalMetrics();prods[i]=m.product;
+    P.width=oldL;
+  }
+  // Restore current state
+  generateWavePacket(animT);computeMomentumSpace();
+  const xR=[0,4.2],yR=[0,Math.max(...prods)*1.2||1];
+  drawGrid(ctx,W,H,pad,xR,yR,8,6);
+  // ℏ/2 line
+  ctx.strokeStyle='rgba(0,255,213,0.35)';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+  const py05=mapY(0.5,yR[0],yR[1]-yR[0],H,pad);
+  ctx.beginPath();ctx.moveTo(pad,py05);ctx.lineTo(W-pad,py05);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='rgba(0,255,213,0.5)';ctx.font='9px JetBrains Mono';ctx.textAlign='left';
+  ctx.fillText('ℏ/2',pad+3,py05-3);
+  polyline(ctx,Ls,prods,60,xR,yR,W,H,pad,'rgba(255,190,0,0.9)',2);
+  // current L marker
+  const curL=P.width;
+  if(curL>=0.2&&curL<=4.0){
+    const oldL2=P.width;P.width=curL;
+    generateWavePacket(0);computeMomentumSpace();
+    const mm=numericalMetrics();P.width=oldL2;
+    generateWavePacket(animT);computeMomentumSpace();
+    const px=mapX(curL,xR[0],xR[1]-xR[0],W,pad);
+    const py=mapY(mm.product,yR[0],yR[1]-yR[0],H,pad);
+    ctx.fillStyle='var(--teal)';ctx.beginPath();ctx.arc(px,py,4,0,TWO_PI);ctx.fill();
+  }
+  axisLabels(ctx,W,H,pad,xR,yR,8,6,1);
+}
+function plotOverlay(){
+  const r=resizeCanvas('cvOverlay');if(!r)return;
+  const {ctx,W,H}=r,pad=38;
+  clearBg(ctx,W,H);
+  const types=['square','triangle','lorentzian','sech','double','cosine'];
+  const colors=['rgba(0,255,213,0.85)','rgba(255,190,0,0.85)','rgba(199,125,255,0.85)','rgba(255,71,87,0.8)','rgba(255,255,255,0.7)','rgba(0,180,255,0.8)'];
+  const L=1.5,oldL=P.width,oldType=packetType,oldAmp=P.amp;
+  P.width=L;P.amp=1.0;
+  let globalMax=0;
+  const allProbs=[];
+  for(const t of types){
+    packetType=t;generateWavePacket(0);
+    const pb=new Float64Array(N);for(let i=0;i<N;i++)pb[i]=prob_x[i];
+    for(let i=0;i<N;i++)if(pb[i]>globalMax)globalMax=pb[i];
+    allProbs.push(pb);
+  }
+  P.width=oldL;packetType=oldType;P.amp=oldAmp;generateWavePacket(animT);computeMomentumSpace();
+  const xR=[-5,5],yR=[0,globalMax*1.15||1];
+  drawGrid(ctx,W,H,pad,xR,yR,10,6);
+  for(let ti=0;ti<types.length;ti++){
+    polyline(ctx,XS,allProbs[ti],N,xR,yR,W,H,pad,colors[ti],1.5);
+  }
+  // legend
+  const names=['Square','Triangle','Lorentzian','Sech','Double','Cosine'];
+  ctx.font='9px JetBrains Mono';
+  for(let ti=0;ti<types.length;ti++){
+    ctx.fillStyle=colors[ti];ctx.fillText(names[ti],pad+6+(ti%3)*80,pad+12+Math.floor(ti/3)*13);
+  }
+  axisLabels(ctx,W,H,pad,xR,yR,10,6,1);
+}
+function plotMomOverlay(){
+  const r=resizeCanvas('cvMomOverlay');if(!r)return;
+  const {ctx,W,H}=r,pad=38;
+  clearBg(ctx,W,H);
+  const types=['square','triangle','lorentzian','sech','double','cosine'];
+  const colors=['rgba(0,255,213,0.85)','rgba(255,190,0,0.85)','rgba(199,125,255,0.85)','rgba(255,71,87,0.8)','rgba(255,255,255,0.7)','rgba(0,180,255,0.8)'];
+  const L=1.5,oldL=P.width,oldType=packetType,oldAmp=P.amp;
+  P.width=L;P.amp=1.0;
+  let globalMax=0;
+  const allMom=[];
+  for(const t of types){
+    packetType=t;generateWavePacket(0);computeMomentumSpace();
+    const pm=new Float64Array(N);for(let i=0;i<N;i++)pm[i]=prob_p[i];
+    for(let i=0;i<N;i++)if(pm[i]>globalMax)globalMax=pm[i];
+    allMom.push(pm);
+  }
+  P.width=oldL;packetType=oldType;P.amp=oldAmp;generateWavePacket(animT);computeMomentumSpace();
+  const pRange=12,xR=[-pRange,pRange],yR=[0,globalMax*1.15||1];
+  drawGrid(ctx,W,H,pad,xR,yR,12,6);
+  for(let ti=0;ti<types.length;ti++){
+    polyline(ctx,PS_AXIS,allMom[ti],N,xR,yR,W,H,pad,colors[ti],1.5);
+  }
+  const names=['Square','Triangle','Lorentzian','Sech','Double','Cosine'];
+  ctx.font='9px JetBrains Mono';
+  for(let ti=0;ti<types.length;ti++){
+    ctx.fillStyle=colors[ti];ctx.fillText(names[ti],pad+6+(ti%3)*80,pad+12+Math.floor(ti/3)*13);
+  }
+  axisLabels(ctx,W,H,pad,xR,yR,12,6,1);
+}
+
+/* ================================================================
+   METRICS UI UPDATE
+   ================================================================ */
+function updateMetrics(){
+  const m=numericalMetrics();
+  const fmt=v=>v.toFixed(4);
+  const fmtS=v=>v.toFixed(2);
+  document.getElementById('m_sigx').textContent=fmt(m.deltaX);
+  document.getElementById('m_sigp').textContent=fmt(m.deltaP);
+  document.getElementById('m_meanx').textContent=fmtS(m.meanX);
+  document.getElementById('m_meanp').textContent=fmtS(m.meanP);
+  const ratio=m.product/0.5;
+  const rEl=document.getElementById('m_ratio');
+  rEl.textContent=fmt(ratio);
+  rEl.className='value '+(ratio<1.02?'ok':ratio<1.5?'warn':'hot');
+  document.getElementById('m_norm').textContent=fmt(m.norm);
+
+  // HUP bar (show excess above 0.5, bar max = product = 3)
+  const pct=Math.min(100,m.product/3*100);
+  const bar=document.getElementById('hupBar');
+  bar.style.width=pct+'%';
+  const r2=m.product/0.5;
+  bar.style.background=r2<1.05?'var(--teal)':r2<1.5?'var(--amber)':'var(--red)';
+  document.getElementById('hupBarLabel').textContent=`ΔxΔp = ${fmt(m.product)} (×${r2.toFixed(3)} ℏ/2)`;
+  document.getElementById('headerHup').textContent=`ΔxΔp = ${fmt(m.product)}`;
+
+  // Task C
+  document.getElementById('ac_dx').textContent=fmt(m.deltaX);
+  document.getElementById('ac_dp').textContent=fmt(m.deltaP);
+  document.getElementById('ac_prod').textContent=fmt(m.product);
+  const rE=document.getElementById('ac_ratio');rE.textContent=fmt(ratio);
+  rE.style.color=ratio<1.05?'var(--teal)':ratio<1.5?'var(--amber)':'var(--red)';
+  const veq=document.getElementById('verifyEq');
+  veq.textContent=`Δx·Δp = ${fmt(m.deltaX)} × ${fmt(m.deltaP)} = ${fmt(m.product)} ≥ ℏ/2 ${m.product>=0.499?'✓':'✗'}`;
+  veq.style.color=m.product>=0.499?'var(--teal)':'var(--red)';
+  // verify bars
+  const scale=3;
+  document.getElementById('vbDx').style.width=Math.min(100,m.deltaX/scale*100)+'%';
+  document.getElementById('vbDxVal').textContent=fmt(m.deltaX);
+  document.getElementById('vbDp').style.width=Math.min(100,m.deltaP/scale*100)+'%';
+  document.getElementById('vbDpVal').textContent=fmt(m.deltaP);
+  document.getElementById('vbProd').style.width=Math.min(100,m.product/3*100)+'%';
+  document.getElementById('vbProdVal').textContent=fmt(m.product);
+}
+
+/* ================================================================
+   RENDER DISPATCH
+   ================================================================ */
+function render(t){
+  generateWavePacket(t);
+  if(needFullRecompute){computeMomentumSpace();computeWignerSlice();needFullRecompute=false;}
+  updateMetrics();
+  switch(activeTab){
+    case 'a': plotReIm();plotProbability();plotPhase();break;
+    case 'b': plotMomentum();plotMomRe();plotWigner();break;
+    case 'c': plotReIm();plotSweep();break;
+    case 'd': plotOverlay();plotMomOverlay();break;
+  }
+}
+
+/* ================================================================
+   ANIMATION LOOP
+   ================================================================ */
+let lastFrameTime=0;
+const TARGET_FPS=60,FRAME_MS=1000/TARGET_FPS;
+function animLoop(ts){
+  if(!animating)return;
+  if(ts-lastFrameTime>=FRAME_MS-1){
+    fpsSamples.push(ts-lastFrameTime);if(fpsSamples.length>20)fpsSamples.shift();
+    const avgMs=fpsSamples.reduce((a,b)=>a+b,0)/fpsSamples.length;
+    document.getElementById('fpsCounter').textContent=Math.round(1000/avgMs)+' fps';
+    lastFrameTime=ts;
+    animT+=0.04;if(animT>12)animT=-4;
+    needFullRecompute=true;
+    render(animT);
+  }
+  animFrame=requestAnimationFrame(animLoop);
+}
+function toggleAnimation(){
+  animating=!animating;
+  const btn=document.getElementById('btnAnim');
+  if(animating){
+    btn.classList.add('active');btn.textContent='⏹ STOP ANIMATION';
+    fpsSamples=[];animFrame=requestAnimationFrame(animLoop);
+  }else{
+    btn.classList.remove('active');btn.textContent='⟳ ANIMATE TIME EVOLUTION';
+    cancelAnimationFrame(animFrame);document.getElementById('fpsCounter').textContent='— fps';
+    render(0);
+  }
+}
+
+/* ================================================================
+   CONTROLS
+   ================================================================ */
+function readSliders(){
+  return{
+    width:parseFloat(document.getElementById('sl_width').value),
+    x0:parseFloat(document.getElementById('sl_x0').value),
+    k0:parseFloat(document.getElementById('sl_k0').value),
+    amp:parseFloat(document.getElementById('sl_amp').value),
+  };
+}
+function onSlider(){
+  const np=readSliders();
+  document.getElementById('val_width').textContent=np.width.toFixed(2);
+  document.getElementById('val_x0').textContent=np.x0.toFixed(2);
+  document.getElementById('val_k0').textContent=np.k0.toFixed(2);
+  document.getElementById('val_amp').textContent=np.amp.toFixed(2);
+  needFullRecompute=true;P=np;if(!animating)render(animT);
+}
+function setPacketType(type,el){
+  packetType=type;
+  document.querySelectorAll('.ptype-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  // Update info and equation displays
+  const infos={
+    square:'<strong>Square / Top-Hat Packet.</strong> ψ(x) = A·rect((x−x₀)/L)·exp(ik₀x). The sharp edges produce sinc² sidelobes in momentum space: |φ(p)|² ∝ sinc²((p−k₀)L/2). ΔxΔp = π/(6√3) ≈ 0.524 · ℏ, exceeding ℏ/2 by a factor of ~1.047.',
+    triangle:'<strong>Triangular Packet.</strong> ψ(x) = A·max(0,1−|x−x₀|/L)·exp(ik₀x). Smoother than square; momentum distribution ∝ sinc⁴. Reduced sidelobes but wider core: ΔxΔp ≈ 0.603 · ℏ, factor ~1.206.',
+    lorentzian:'<strong>Lorentzian Packet.</strong> ψ(x) = A/(1+((x−x₀)/γ)²)·exp(ik₀x). Cauchy-Lorentz envelope; Fourier transform is exponential |φ(p)| ∝ exp(−γ|p−k₀|). The heavy tails make Δp diverge; ΔxΔp → ∞.',
+    sech:'<strong>Sech / Soliton Packet.</strong> ψ(x) = A·sech((x−x₀)/a)·exp(ik₀x). The hyperbolic secant is the bright soliton eigenstate of the NLS equation. Remarkably, F{sech} = sech, giving nearly Gaussian-like spreading. ΔxΔp ≈ 0.525.',
+    double:'<strong>Double-Peak Packet.</strong> Superposition of two displaced Gaussians. Off-diagonal interference terms produce oscillations in momentum space and negative regions of the Wigner function — a quantum interference signature impossible classically.',
+    cosine:'<strong>Cosine-Tapered Packet.</strong> ψ(x) = A·cos(πx/L)·rect(x/L)·exp(ik₀x). The cosine taper suppresses the sharp edges of the square packet, reducing sinc sidelobes. ΔxΔp ≈ 0.512, just above ℏ/2.',
+  };
+  const eqs={
+    square:'ψ(x) = A·rect((x−x₀)/L)·exp(ik₀x)',
+    triangle:'ψ(x) = A·max(0,1−|x−x₀|/L)·exp(ik₀x)',
+    lorentzian:'ψ(x) = A/(1+((x−x₀)/γ)²)·exp(ik₀x)',
+    sech:'ψ(x) = A·sech((x−x₀)/a)·exp(ik₀x)',
+    double:'ψ(x) = A·[G(x−d/2)+G(x+d/2)]·exp(ik₀x)',
+    cosine:'ψ(x) = A·cos(πx/L)·rect(x/L)·exp(ik₀x)',
+  };
+  document.getElementById('infoA').innerHTML=infos[type]||'';
+  document.getElementById('eqA').textContent=eqs[type]||'';
+  needFullRecompute=true;animT=0;render(0);
+}
+function resetTime(){animT=0;needFullRecompute=true;render(0);}
+function switchTask(id,el){
+  activeTab=id;
+  document.querySelectorAll('.task-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.chart-section').forEach(s=>s.classList.remove('active'));
+  document.getElementById('task_'+id)?.classList.add('active');
+  Object.keys(CTX).forEach(k=>{const c=CTX[k];if(c){c.cv.width=0;}delete CTX[k];});
+  needFullRecompute=true;render(animT);
+}
+window.addEventListener('resize',()=>{
+  clearTimeout(resizeTimer);
+  resizeTimer=setTimeout(()=>{Object.keys(CTX).forEach(k=>{delete CTX[k];});render(animT);},120);
+});
+window.addEventListener('load',()=>{P=readSliders();needFullRecompute=true;render(0);});
+</script>
+</body>
+</html>

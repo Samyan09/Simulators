@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gaussian Wave Packet · HUP Simulator</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#020408;--surface:#060d18;--card:#0a1628;--border:#0f2244;--border2:#1a3a6a;
+  --teal:#00ffd4;--blue:#4488ff;--gold:#ffc840;--rose:#ff4f7b;--lime:#a8ff60;
+  --white:#d8eaf8;--muted:#3a5878;
+  --gt:rgba(0,255,212,.18);--gg:rgba(255,200,64,.18);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'JetBrains Mono',monospace;background:var(--bg);color:var(--white);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;background-image:linear-gradient(rgba(0,255,212,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,255,212,.025) 1px,transparent 1px);background-size:48px 48px}
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:1;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.04) 3px,rgba(0,0,0,.04) 4px)}
+
+header{position:sticky;top:0;z-index:50;background:rgba(6,13,24,.96);backdrop-filter:blur(16px);border-bottom:1px solid var(--border2);padding:14px 28px;display:flex;align-items:center;justify-content:space-between}
+.logo-title{font-family:'Orbitron',sans-serif;font-size:1rem;font-weight:900;letter-spacing:4px;color:var(--teal);text-shadow:0 0 24px var(--gt)}
+.logo-sub{font-size:.58rem;letter-spacing:3px;color:var(--muted);margin-top:2px}
+.hstats{display:flex;gap:24px;align-items:center}
+.hs{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+.hs-lbl{font-size:.55rem;letter-spacing:2px;color:var(--muted);text-transform:uppercase}
+.hs-val{font-size:.8rem;font-weight:700}
+.hs-val.t{color:var(--teal);text-shadow:0 0 10px var(--gt)}
+.hs-val.g{color:var(--gold);text-shadow:0 0 10px var(--gg)}
+.hs-val.r{color:var(--rose)}
+.hs-val.ok{color:var(--lime)}
+.live{width:8px;height:8px;border-radius:50%;background:var(--teal);box-shadow:0 0 10px var(--teal);animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+.app{position:relative;z-index:2;display:grid;grid-template-columns:280px 1fr;min-height:calc(100vh - 57px)}
+aside{background:var(--surface);border-right:1px solid var(--border2);padding:20px 16px;overflow-y:auto;position:sticky;top:57px;height:calc(100vh - 57px)}
+
+.sec{font-size:.55rem;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.sec::after{content:'';flex:1;height:1px;background:var(--border2)}
+.mb{margin-bottom:20px}
+
+.ch{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+.cn{font-size:.72rem;color:var(--white)}
+.cv{font-size:.72rem;font-weight:700}
+.cv.t{color:var(--teal)}.cv.l{color:var(--lime)}.cv.g{color:var(--gold)}
+
+input[type=range]{-webkit-appearance:none;width:100%;height:2px;background:var(--border2);border-radius:2px;outline:none;cursor:pointer;margin-bottom:14px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--teal);box-shadow:0 0 12px var(--gt);transition:transform .15s}
+input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.4)}
+input[type=range].l::-webkit-slider-thumb{background:var(--lime);box-shadow:0 0 12px rgba(168,255,96,.3)}
+input[type=range].g::-webkit-slider-thumb{background:var(--gold);box-shadow:0 0 12px var(--gg)}
+
+.presets{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+.pb{font-family:'JetBrains Mono',monospace;font-size:.6rem;padding:5px 10px;border:1px solid var(--border2);border-radius:4px;background:transparent;color:var(--muted);cursor:pointer;transition:all .15s}
+.pb:hover{border-color:var(--teal);color:var(--teal);background:rgba(0,255,212,.05)}
+
+.metrics{background:rgba(0,255,212,.03);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:16px}
+.mr{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:.7rem}
+.mr:last-child{border-bottom:none}
+.ml{color:var(--muted)}
+.mv{font-weight:700}
+.mv.t{color:var(--teal)}.mv.l{color:var(--lime)}.mv.g{color:var(--gold)}.mv.r{color:var(--rose)}
+.mv.ok{color:var(--lime);text-shadow:0 0 8px rgba(168,255,96,.4)}.mv.warn{color:var(--gold)}
+.hbw{background:var(--border);border-radius:3px;height:6px;margin-top:10px;overflow:hidden}
+.hb{height:100%;border-radius:3px;transition:width .3s,background .3s}
+.hbl{font-size:.6rem;color:var(--muted);text-align:center;margin-top:4px}
+
+.abtn{font-family:'Orbitron',sans-serif;font-size:.7rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;width:100%;padding:10px;border-radius:6px;cursor:pointer;transition:all .2s;margin-bottom:8px}
+.bp{background:rgba(0,255,212,.1);border:1px solid var(--teal);color:var(--teal)}
+.bp:hover{background:rgba(0,255,212,.2);box-shadow:0 0 20px var(--gt)}
+.bs{background:transparent;border:1px solid var(--border2);color:var(--muted)}
+.bs:hover,.bs.active{border-color:var(--lime);color:var(--lime);background:rgba(168,255,96,.06)}
+.ib{background:rgba(68,136,255,.05);border:1px solid rgba(68,136,255,.2);border-radius:8px;padding:12px;font-size:.68rem;line-height:1.7;color:#6a90b8}
+.ib strong{color:var(--teal)}
+
+.content{padding:20px;display:flex;flex-direction:column;gap:16px;overflow-y:auto}
+.tabs{display:flex;gap:4px;background:var(--surface);border:1px solid var(--border2);border-radius:8px;padding:5px;width:fit-content}
+.tab{padding:7px 20px;border-radius:5px;font-size:.65rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);cursor:pointer;transition:all .18s;user-select:none}
+.tab.active{background:rgba(0,255,212,.1);color:var(--teal);border:1px solid rgba(0,255,212,.3);text-shadow:0 0 8px var(--gt)}
+.tab:not(.active):hover{color:var(--white)}
+
+.panel{display:none;flex-direction:column;gap:16px}
+.panel.active{display:flex}
+
+.cc{background:var(--card);border:1px solid var(--border2);border-radius:10px;overflow:hidden;position:relative}
+.cc::after{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--teal),transparent);opacity:.5}
+.ch2{padding:12px 18px 8px;display:flex;align-items:center;justify-content:space-between}
+.ct{font-size:.65rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted)}
+.cf{font-size:.6rem;color:var(--border2);letter-spacing:.5px}
+canvas{display:block;width:100%}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+
+.hup-panel{background:var(--card);border:1px solid var(--border2);border-radius:10px;padding:24px;position:relative;overflow:hidden}
+.hup-panel::after{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
+.hup-title{font-family:'Orbitron',sans-serif;font-size:.7rem;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:20px;text-shadow:0 0 16px var(--gg)}
+.hup-eq{font-family:'Orbitron',sans-serif;font-size:1.1rem;font-weight:900;text-align:center;padding:18px;background:rgba(255,200,64,.04);border:1px solid rgba(255,200,64,.15);border-radius:8px;margin-bottom:20px;letter-spacing:1px;transition:color .3s;word-break:break-all}
+.hcards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.hcard{background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:8px;padding:14px;text-align:center}
+.hcard-lbl{font-size:.55rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.hcard-val{font-family:'Orbitron',sans-serif;font-size:1.05rem;font-weight:700}
+.vbars{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.vb-lbl{font-size:.6rem;color:var(--muted);margin-bottom:6px}
+.vb-track{background:var(--border);border-radius:3px;height:8px;overflow:hidden}
+.vb-fill{height:100%;border-radius:3px;transition:width .4s ease}
+.vb-val{font-size:.65rem;margin-top:4px;font-weight:700}
+.agrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.acard{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px;transition:border-color .2s}
+.acard:hover{border-color:var(--border2)}
+.acard-tag{font-size:.55rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.acard-big{font-family:'Orbitron',sans-serif;font-size:1.2rem;font-weight:700;margin-bottom:4px}
+.acard-desc{font-size:.65rem;color:var(--muted);line-height:1.5}
+
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+@media(max-width:900px){.app{grid-template-columns:1fr}aside{position:static;height:auto;border-right:none;border-bottom:1px solid var(--border2)}.hcards{grid-template-columns:1fr 1fr}.two{grid-template-columns:1fr}.vbars{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo-title">ΨSimulator</div>
+    <div class="logo-sub">Gaussian Wave Packet · Heisenberg Uncertainty Principle</div>
+  </div>
+  <div class="hstats">
+    <div class="hs"><div class="hs-lbl">ΔxΔp</div><div class="hs-val t" id="hdr-prod">—</div></div>
+    <div class="hs"><div class="hs-lbl">Ratio/(ℏ/2)</div><div class="hs-val g" id="hdr-ratio">—</div></div>
+    <div class="hs"><div class="hs-lbl">HUP Status</div><div class="hs-val r" id="hdr-status">—</div></div>
+    <div class="live"></div>
+  </div>
+</header>
+
+<div class="app">
+<aside>
+  <div class="mb">
+    <div class="sec">Wave Parameters</div>
+    <div class="ch"><span class="cn">Width σₓ</span><span class="cv t" id="v-sigma">1.00</span></div>
+    <input type="range" id="sl-sigma" min="0.2" max="3.0" step="0.05" value="1.0" oninput="onParam()">
+    <div class="ch"><span class="cn">Center x₀</span><span class="cv t" id="v-x0">0.00</span></div>
+    <input type="range" id="sl-x0" min="-5" max="5" step="0.1" value="0" oninput="onParam()">
+    <div class="ch"><span class="cn">Momentum k₀</span><span class="cv l" id="v-k0">2.00</span></div>
+    <input type="range" class="l" id="sl-k0" min="-8" max="8" step="0.2" value="2" oninput="onParam()">
+    <div class="ch"><span class="cn">Amplitude A</span><span class="cv g" id="v-amp">1.00</span></div>
+    <input type="range" class="g" id="sl-amp" min="0.2" max="3.0" step="0.1" value="1.0" oninput="onParam()">
+  </div>
+
+  <div class="mb">
+    <div class="sec">Presets</div>
+    <div class="presets">
+      <button class="pb" onclick="preset(1,0,2,1)">Standard</button>
+      <button class="pb" onclick="preset(0.4,0,5,1)">Narrow</button>
+      <button class="pb" onclick="preset(2.5,0,1,1)">Wide</button>
+      <button class="pb" onclick="preset(1,-3,4,1.5)">Offset</button>
+      <button class="pb" onclick="preset(0.3,0,0,1)">Min-σ</button>
+    </div>
+  </div>
+
+  <div class="mb">
+    <div class="sec">Quantum Metrics</div>
+    <div class="metrics">
+      <div class="mr"><span class="ml">Δx (position σ)</span><span class="mv t" id="m-dx">—</span></div>
+      <div class="mr"><span class="ml">Δp (momentum σ)</span><span class="mv l" id="m-dp">—</span></div>
+      <div class="mr"><span class="ml">⟨x⟩ mean position</span><span class="mv t" id="m-mx">—</span></div>
+      <div class="mr"><span class="ml">⟨p⟩ mean momentum</span><span class="mv l" id="m-mp">—</span></div>
+      <div class="mr"><span class="ml">ΔxΔp product</span><span class="mv g" id="m-prod">—</span></div>
+      <div class="mr"><span class="ml">Ratio / (ℏ/2)</span><span class="mv" id="m-ratio">—</span></div>
+      <div class="mr"><span class="ml">∫|ψ|²dx norm</span><span class="mv" id="m-norm">—</span></div>
+      <div class="hbw"><div class="hb" id="hup-bar"></div></div>
+      <div class="hbl" id="hup-lbl">ΔxΔp = 0</div>
+    </div>
+  </div>
+
+  <div class="mb">
+    <div class="sec">Controls</div>
+    <button class="abtn bp" onclick="resetSim()">▶ Reset / Compute</button>
+    <button class="abtn bs" id="btn-anim" onclick="toggleAnim()">⟳ Animate Time</button>
+  </div>
+
+  <div class="ib">
+    Setting <strong>ℏ = 1</strong>.<br>
+    For a Gaussian: <strong>Δx = σ</strong>, <strong>Δp = 1/(2σ)</strong><br>
+    Product: <strong>ΔxΔp = 0.5 = ℏ/2</strong><br>
+    Gaussians <em>saturate</em> the Heisenberg bound — no state can have a smaller product.
+  </div>
+</aside>
+
+<div class="content">
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('pos',this)">Position Space</div>
+    <div class="tab" onclick="switchTab('mom',this)">Momentum Space</div>
+    <div class="tab" onclick="switchTab('hup',this)">HUP Verification</div>
+  </div>
+
+  <!-- POSITION SPACE -->
+  <div class="panel active" id="tab-pos">
+    <div class="cc">
+      <div class="ch2">
+        <span class="ct">Re[ψ] · Im[ψ] · Envelope ±|ψ|</span>
+        <span class="cf">ψ(x,t) = A·(σ/σₜ)^½ · exp(−Δx²/4σₜ²) · exp(iΘ)</span>
+      </div>
+      <canvas id="cv-reim" height="240"></canvas>
+    </div>
+    <div class="two">
+      <div class="cc">
+        <div class="ch2"><span class="ct">Probability Density |ψ|²</span><span class="cf">∫|ψ|²dx = 1</span></div>
+        <canvas id="cv-prob" height="200"></canvas>
+      </div>
+      <div class="cc">
+        <div class="ch2"><span class="ct">Phase arg(ψ)</span><span class="cf">φ = k₀x − ½k₀²t + chirp</span></div>
+        <canvas id="cv-phase" height="200"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- MOMENTUM SPACE -->
+  <div class="panel" id="tab-mom">
+    <div class="cc">
+      <div class="ch2"><span class="ct">Momentum Distribution |φ(p)|²</span><span class="cf">φ(p) = FT{ψ(x)} — FFT vs Analytic</span></div>
+      <canvas id="cv-mom" height="250"></canvas>
+    </div>
+    <div class="two">
+      <div class="cc">
+        <div class="ch2"><span class="ct">Re[φ(p)] Fourier Transform</span><span class="cf">Gaussian × cos(phase shift)</span></div>
+        <canvas id="cv-momre" height="200"></canvas>
+      </div>
+      <div class="cc">
+        <div class="ch2"><span class="ct">σₓ vs σ_p Width Trade-off</span><span class="cf">σₓ · σ_p = 1/2</span></div>
+        <canvas id="cv-tradeoff" height="200"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- HUP VERIFICATION -->
+  <div class="panel" id="tab-hup">
+    <div class="hup-panel">
+      <div class="hup-title">Heisenberg Uncertainty Principle — Live Verification</div>
+      <div class="hup-eq" id="hup-eq">Δx · Δp = σ × 1/(2σ) = 0.500000 = ℏ/2 ✓</div>
+      <div class="hcards">
+        <div class="hcard"><div class="hcard-lbl">Position Δx</div><div class="hcard-val" style="color:var(--teal)" id="hc-dx">—</div></div>
+        <div class="hcard"><div class="hcard-lbl">Momentum Δp</div><div class="hcard-val" style="color:var(--lime)" id="hc-dp">—</div></div>
+        <div class="hcard"><div class="hcard-lbl">Product ΔxΔp</div><div class="hcard-val" style="color:var(--gold)" id="hc-prod">—</div></div>
+        <div class="hcard"><div class="hcard-lbl">Ratio / (ℏ/2)</div><div class="hcard-val" style="color:var(--rose)" id="hc-ratio">—</div></div>
+      </div>
+      <div class="vbars">
+        <div><div class="vb-lbl">Δx — Position Uncertainty</div><div class="vb-track"><div class="vb-fill" id="vb-dx" style="background:var(--teal)"></div></div><div class="vb-val" style="color:var(--teal)" id="vbv-dx">—</div></div>
+        <div><div class="vb-lbl">Δp — Momentum Uncertainty</div><div class="vb-track"><div class="vb-fill" id="vb-dp" style="background:var(--lime)"></div></div><div class="vb-val" style="color:var(--lime)" id="vbv-dp">—</div></div>
+        <div><div class="vb-lbl">ΔxΔp vs ℏ/2 bound</div><div class="vb-track"><div class="vb-fill" id="vb-prod" style="background:var(--gold)"></div></div><div class="vb-val" style="color:var(--gold)" id="vbv-prod">—</div></div>
+      </div>
+    </div>
+    <div class="two">
+      <div class="cc">
+        <div class="ch2"><span class="ct">ΔxΔp vs σ — Invariance Sweep</span><span class="cf">Analytical: always 0.5</span></div>
+        <canvas id="cv-sweep" height="220"></canvas>
+      </div>
+      <div class="cc">
+        <div class="ch2"><span class="ct">Phase Space — Standard Quantum Limit</span><span class="cf">Δx·Δp = ℏ/2 hyperbola</span></div>
+        <canvas id="cv-sql" height="220"></canvas>
+      </div>
+    </div>
+    <div class="agrid">
+      <div class="acard"><div class="acard-tag">Analytical Δx</div><div class="acard-big" style="color:var(--teal)" id="ac-dx">—</div><div class="acard-desc">√⟨(x−⟨x⟩)²⟩ = σ_x exactly<br>Broadens with time: σₜ = σ√(1+(t/2σ²)²)</div></div>
+      <div class="acard"><div class="acard-tag">Analytical Δp</div><div class="acard-big" style="color:var(--lime)" id="ac-dp">—</div><div class="acard-desc">√⟨(p−⟨p⟩)²⟩ = 1/(2σ_x)<br>Time-independent for free particle</div></div>
+      <div class="acard"><div class="acard-tag">Product ΔxΔp</div><div class="acard-big" style="color:var(--gold)" id="ac-prod">—</div><div class="acard-desc">Target: 0.500000 = ℏ/2<br>Gaussian saturates the bound exactly</div></div>
+      <div class="acard"><div class="acard-tag">Saturation Ratio</div><div class="acard-big" style="color:var(--rose)" id="ac-ratio">—</div><div class="acard-desc">ΔxΔp / (ℏ/2) = 1.000000<br>Confirms minimum uncertainty state</div></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+'use strict';
+const N=2048,XMIN=-14,XMAX=14,DX=(XMAX-XMIN)/N,TAU=Math.PI*2;
+const XS=new Float64Array(N); for(let i=0;i<N;i++) XS[i]=XMIN+i*DX;
+const psi_re=new Float64Array(N),psi_im=new Float64Array(N),prob_x=new Float64Array(N);
+const fft_re=new Float64Array(N),fft_im=new Float64Array(N);
+const phi_re=new Float64Array(N),phi_im=new Float64Array(N),prob_p=new Float64Array(N);
+const DK=TAU/(N*DX);
+const PS=new Float64Array(N); for(let i=0;i<N;i++) PS[i]=(i-N/2)*DK;
+
+// FFT LUTs
+const BR=new Uint16Array(N);
+(function(){let j=0;for(let i=1;i<N;i++){let b=N>>1;for(;j&b;b>>=1)j^=b;j^=b;BR[i]=j;}})();
+const TC=[],TS=[];
+for(let len=2;len<=N;len<<=1){const a=-TAU/len;TC.push(Math.cos(a));TS.push(Math.sin(a));}
+
+function fft(re,im){
+  for(let i=1;i<N;i++){const j=BR[i];if(i<j){let t=re[i];re[i]=re[j];re[j]=t;t=im[i];im[i]=im[j];im[j]=t;}}
+  let s=0;
+  for(let len=2;len<=N;len<<=1,s++){
+    const wr=TC[s],wi=TS[s],h=len>>1;
+    for(let i=0;i<N;i+=len){
+      let cr=1,ci=0;
+      for(let k=0;k<h;k++){
+        const a=i+k,b=a+h,ur=re[a],ui=im[a],vr=re[b]*cr-im[b]*ci,vi=re[b]*ci+im[b]*cr;
+        re[a]=ur+vr;im[a]=ui+vi;re[b]=ur-vr;im[b]=ui-vi;
+        const nr=cr*wr-ci*wi;ci=cr*wi+ci*wr;cr=nr;
+      }
+    }
+  }
+}
+
+let P={sigma:1,x0:0,k0:2,amp:1};
+let animT=0,animating=false,animFrame=null,lastFt=0,activeTab='pos',needFFT=true;
+const CTX={};
+
+function getCtx(id){
+  if(CTX[id]) return CTX[id];
+  const cv=document.getElementById(id);if(!cv)return null;
+  const ctx=cv.getContext('2d',{alpha:false});CTX[id]={ctx,cv};return CTX[id];
+}
+
+function sc(id){
+  const e=getCtx(id);if(!e)return null;
+  const{ctx,cv}=e,dpr=window.devicePixelRatio||1;
+  const w=cv.parentElement.clientWidth||600,h=parseInt(cv.getAttribute('height'))||200;
+  if(cv.width!==Math.round(w*dpr)||cv.height!==Math.round(h*dpr)){
+    cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr);
+    cv.style.width=w+'px';cv.style.height=h+'px';
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  return{ctx,W:w,H:h};
+}
+
+// Physics
+function buildPsi(t){
+  const{sigma,x0,k0,amp}=P,s2=sigma*sigma;
+  const st=sigma*Math.sqrt(1+t*t/(4*s2*s2)),st2=st*st;
+  const gouy=0.5*Math.atan2(t,2*s2),At=amp*Math.sqrt(sigma/st),cx=x0+k0*t;
+  for(let i=0;i<N;i++){
+    const dx=XS[i]-cx,env=At*Math.exp(-dx*dx/(4*st2));
+    const ph=k0*(XS[i]-x0)-0.5*k0*k0*t+dx*dx*t/(8*s2*st2)-gouy;
+    psi_re[i]=env*Math.cos(ph);psi_im[i]=env*Math.sin(ph);prob_x[i]=env*env;
+  }
+}
+
+function buildFFT(){
+  for(let i=0;i<N;i++){const s=(i&1)?-1:1;fft_re[i]=psi_re[i]*s*DX;fft_im[i]=psi_im[i]*s*DX;}
+  fft(fft_re,fft_im);
+  let nm=0;
+  for(let i=0;i<N;i++){const s=(i&1)?-1:1;phi_re[i]=fft_re[i]*s;phi_im[i]=fft_im[i]*s;prob_p[i]=phi_re[i]*phi_re[i]+phi_im[i]*phi_im[i];nm+=prob_p[i];}
+  nm*=DK;if(nm>0){const inv=1/nm;for(let i=0;i<N;i++)prob_p[i]*=inv;}
+}
+
+function analytics(t){
+  const{sigma,x0,k0,amp}=P,s2=sigma*sigma;
+  const st=sigma*Math.sqrt(1+t*t/(4*s2*s2));
+  const dx=st,dp=0.5/sigma,prod=dx*dp;
+  return{dx,dp,prod,ratio:prod/0.5,meanX:x0+k0*t,meanP:k0,norm:amp*amp*Math.sqrt(TAU)*sigma};
+}
+
+// Drawing
+const PAD=40;
+function bg(ctx,W,H){ctx.fillStyle='#0a1628';ctx.fillRect(0,0,W,H);}
+function mx(v,xR,W){return PAD+(v-xR[0])/(xR[1]-xR[0])*(W-2*PAD);}
+function my(v,yR,H){return H-PAD-(v-yR[0])/(yR[1]-yR[0])*(H-2*PAD);}
+
+function grid(ctx,W,H,xR,yR,nx,ny){
+  const iW=W-2*PAD,iH=H-2*PAD;
+  ctx.strokeStyle='rgba(0,255,212,.04)';ctx.lineWidth=0.5;ctx.beginPath();
+  for(let i=0;i<=nx;i++){const x=PAD+i/nx*iW;ctx.moveTo(x,PAD);ctx.lineTo(x,H-PAD);}
+  for(let i=0;i<=ny;i++){const y=PAD+i/ny*iH;ctx.moveTo(PAD,y);ctx.lineTo(W-PAD,y);}
+  ctx.stroke();
+  ctx.strokeStyle='rgba(255,255,255,.1)';ctx.lineWidth=0.8;ctx.beginPath();
+  if(yR[0]<0&&yR[1]>0){const py=my(0,yR,H);ctx.moveTo(PAD,py);ctx.lineTo(W-PAD,py);}
+  if(xR[0]<0&&xR[1]>0){const px=mx(0,xR,W);ctx.moveTo(px,PAD);ctx.lineTo(px,H-PAD);}
+  ctx.stroke();
+}
+
+function line(ctx,xs,ys,n,xR,yR,W,H,col,lw){
+  if(n<2)return;
+  ctx.strokeStyle=col;ctx.lineWidth=lw;
+  const xS=xR[1]-xR[0],yS=yR[1]-yR[0],iW=W-2*PAD,iH=H-2*PAD;
+  ctx.beginPath();ctx.moveTo(PAD+(xs[0]-xR[0])/xS*iW,H-PAD-(ys[0]-yR[0])/yS*iH);
+  for(let i=1;i<n;i++) ctx.lineTo(PAD+(xs[i]-xR[0])/xS*iW,H-PAD-(ys[i]-yR[0])/yS*iH);
+  ctx.stroke();
+}
+
+function fill(ctx,xs,ys,n,xR,yR,W,H,c1,c2){
+  if(n<2)return;
+  const xS=xR[1]-xR[0],yS=yR[1]-yR[0],iW=W-2*PAD,iH=H-2*PAD;
+  const py0=Math.min(Math.max(H-PAD-(0-yR[0])/yS*iH,PAD),H-PAD);
+  const g=ctx.createLinearGradient(0,PAD,0,H-PAD);g.addColorStop(0,c1);g.addColorStop(1,c2);
+  ctx.fillStyle=g;ctx.beginPath();
+  ctx.moveTo(PAD+(xs[0]-xR[0])/xS*iW,py0);
+  for(let i=0;i<n;i++) ctx.lineTo(PAD+(xs[i]-xR[0])/xS*iW,H-PAD-(ys[i]-yR[0])/yS*iH);
+  ctx.lineTo(PAD+(xs[n-1]-xR[0])/xS*iW,py0);ctx.closePath();ctx.fill();
+}
+
+function dash(ctx,x1,y1,x2,y2,col,pat){ctx.save();ctx.strokeStyle=col;ctx.lineWidth=1;ctx.setLineDash(pat);ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();ctx.setLineDash([]);ctx.restore();}
+function lbl(ctx,t,x,y,col,sz){ctx.font=sz+'px JetBrains Mono,monospace';ctx.fillStyle=col;ctx.fillText(t,x,y);}
+
+// Plots
+function plotReIm(){
+  const r=sc('cv-reim');if(!r)return;const{ctx,W,H}=r;bg(ctx,W,H);
+  let yM=0;for(let i=0;i<N;i++){const v=Math.max(Math.abs(psi_re[i]),Math.abs(psi_im[i]));if(v>yM)yM=v;}
+  yM=(yM||1)*1.35;const xR=[XMIN,XMAX],yR=[-yM,yM];grid(ctx,W,H,xR,yR,12,6);
+  // Envelope
+  ctx.strokeStyle='rgba(255,200,64,.5)';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+  ctx.beginPath();for(let i=0;i<N;i++){const px=mx(XS[i],xR,W),py=my(Math.sqrt(prob_x[i]),yR,H);i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);}ctx.stroke();
+  ctx.beginPath();for(let i=0;i<N;i++){const px=mx(XS[i],xR,W),py=my(-Math.sqrt(prob_x[i]),yR,H);i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);}ctx.stroke();
+  ctx.setLineDash([]);
+  fill(ctx,XS,psi_im,N,xR,yR,W,H,'rgba(168,255,96,.2)','rgba(168,255,96,.0)');
+  fill(ctx,XS,psi_re,N,xR,yR,W,H,'rgba(0,255,212,.15)','rgba(0,255,212,.0)');
+  line(ctx,XS,psi_re,N,xR,yR,W,H,'#00ffd4',2);
+  line(ctx,XS,psi_im,N,xR,yR,W,H,'#a8ff60',1.5);
+  lbl(ctx,'Re[ψ]',W-75,PAD+16,'#00ffd4',10);lbl(ctx,'Im[ψ]',W-75,PAD+30,'#a8ff60',10);lbl(ctx,'±|ψ|',W-75,PAD+44,'rgba(255,200,64,.7)',10);
+  const st=P.sigma*Math.sqrt(1+animT*animT/(4*P.sigma**4));
+  lbl(ctx,'t='+animT.toFixed(2)+'  σₜ='+st.toFixed(3),PAD+4,H-8,'rgba(255,255,255,.25)',9);
+}
+
+function plotProb(){
+  const r=sc('cv-prob');if(!r)return;const{ctx,W,H}=r;bg(ctx,W,H);
+  let yM=0;for(let i=0;i<N;i++)if(prob_x[i]>yM)yM=prob_x[i];yM=(yM||1)*1.3;
+  const xR=[XMIN,XMAX],yR=[0,yM];grid(ctx,W,H,xR,yR,10,4);
+  fill(ctx,XS,prob_x,N,xR,yR,W,H,'rgba(0,255,212,.3)','rgba(0,255,212,.02)');
+  line(ctx,XS,prob_x,N,xR,yR,W,H,'#00ffd4',2);
+  const cx=P.x0+P.k0*animT,st=P.sigma*Math.sqrt(1+animT*animT/(4*P.sigma**4));
+  dash(ctx,mx(cx,xR,W),PAD,mx(cx,xR,W),H-PAD,'rgba(255,79,123,.7)',[3,3]);
+  const ps=mx(cx+st,xR,W);if(ps<W-PAD)dash(ctx,ps,PAD+20,ps,H-PAD,'rgba(0,255,212,.4)',[3,3]);
+  lbl(ctx,'|ψ(x)|²',PAD+4,PAD+14,'#00ffd4',10);lbl(ctx,'⟨x⟩='+cx.toFixed(2),PAD+4,H-8,'rgba(255,255,255,.3)',9);
+}
+
+function plotPhase(){
+  const r=sc('cv-phase');if(!r)return;const{ctx,W,H}=r;bg(ctx,W,H);
+  const xR=[XMIN,XMAX],yR=[-Math.PI,Math.PI];grid(ctx,W,H,xR,yR,10,4);
+  let pMax=0;for(let i=0;i<N;i++)if(prob_x[i]>pMax)pMax=prob_x[i];const thr=pMax*0.007;
+  ctx.strokeStyle='#ff4f7b';ctx.lineWidth=1.8;ctx.beginPath();let inp=false;
+  for(let i=0;i<N;i++){if(prob_x[i]<thr){inp=false;continue;}const ph=Math.atan2(psi_im[i],psi_re[i]),px=mx(XS[i],xR,W),py=my(ph,yR,H);if(!inp){ctx.moveTo(px,py);inp=true;}else ctx.lineTo(px,py);}ctx.stroke();
+  lbl(ctx,'arg(ψ)',PAD+4,PAD+14,'#ff4f7b',10);lbl(ctx,'+π',W-PAD-18,PAD+12,'rgba(255,255,255,.3)',9);lbl(ctx,'-π',W-PAD-18,H-PAD-4,'rgba(255,255,255,.3)',9);
+}
+
+function plotMom(){
+  const r=sc('cv-mom');if(!r)return;const{ctx,W,H}=r;bg(ctx,W,H);
+  const pR=20;let si=0,ei=N;
+  for(let i=0;i<N;i++)if(PS[i]>=-pR){si=i;break;}for(let i=N-1;i>=0;i--)if(PS[i]<=pR){ei=i+1;break;}
+  const len=ei-si;let yM=0;for(let i=si;i<ei;i++)if(prob_p[i]>yM)yM=prob_p[i];yM=(yM||1)*1.3;
+  const xR=[-pR,pR],yR=[0,yM];grid(ctx,W,H,xR,yR,10,4);
+  const pS=PS.subarray(si,ei),ppS=prob_p.subarray(si,ei);
+  const sp=1/(2*P.sigma),Ap=1/(sp*Math.sqrt(TAU)),aP=new Float64Array(len);
+  for(let i=0;i<len;i++){const dp=PS[si+i]-P.k0;aP[i]=Ap*Math.exp(-dp*dp/(2*sp*sp));}
+  fill(ctx,pS,ppS,len,xR,yR,W,H,'rgba(168,255,96,.3)','rgba(168,255,96,.02)');
+  line(ctx,pS,ppS,len,xR,yR,W,H,'#a8ff60',2);
+  ctx.setLineDash([5,3]);line(ctx,pS,aP,len,xR,yR,W,H,'rgba(255,200,64,.8)',1.5);ctx.setLineDash([]);
+  dash(ctx,mx(P.k0,xR,W),PAD,mx(P.k0,xR,W),H-PAD,'rgba(0,255,212,.5)',[4,4]);
+  lbl(ctx,'|φ(p)|² FFT',PAD+4,PAD+14,'#a8ff60',10);lbl(ctx,'Analytic ---',W-88,PAD+14,'rgba(255,200,64,.8)',10);
+  lbl(ctx,'p₀='+P.k0.toFixed(1)+'  σ_p='+sp.toFixed(4),PAD+4,H-8,'rgba(255,255,255,.25)',9);
+}
+
+function plotMomRe(){
+  const r=sc('cv-momre');if(!r)return;const{ctx,W,H}=r;bg(ctx,W,H);
+  const pR=15;let si=0,ei=N;
+  for(let i=0;i<N;i++)if(PS[i]>=-pR){si=i;break;}for(let i=N-1;i>=0;i--)if(PS[i]<=pR){ei=i+1;break;}
+  const len=ei-si;let yM=0;for(let i=si;i<ei;i++){const v=Math.abs(phi_re[i]);if(v>yM)yM=v;}yM=(yM||1)*1.3;
+  const xR=[-pR,pR],yR=[-yM,yM];grid(ctx,W,H,xR,yR,6,4);
+  fill(ctx,PS.subarray(si,ei),phi_re.subarray(si,ei),len,xR,yR,W,H,'rgba(255,79,123,.25)','rgba(255,79,123,.02)');
+  line(ctx,PS.subarray(si,ei),phi_re.subarray(si,ei),len,xR,yR,W,H,'#ff4f7b',1.8);
+  lbl(ctx,'Re[φ(p)]',PAD+4,PAD+14,'#ff4f7b',10);
+}
+
+function plotTradeoff(){
+  const r=sc('cv-tradeoff');if(!r)return;const{ctx,W,H}=r;bg(ctx,W,H);
+  const sx=P.sigma,sp=1/(2*sx),n=300;
+  const xi=new Float64Array(n),gx=new Float64Array(n),gp=new Float64Array(n);
+  for(let i=0;i<n;i++){xi[i]=-5+i*10/(n-1);gx[i]=Math.exp(-xi[i]*xi[i]/(2*sx*sx));gp[i]=Math.exp(-xi[i]*xi[i]/(2*sp*sp));}
+  const xR=[-5,5],yR=[0,1.2];grid(ctx,W,H,xR,yR,5,4);
+  line(ctx,xi,gx,n,xR,yR,W,H,'#00ffd4',2);line(ctx,xi,gp,n,xR,yR,W,H,'#a8ff60',2);
+  dash(ctx,mx(sx,xR,W),PAD+20,mx(sx,xR,W),H-PAD,'rgba(0,255,212,.4)',[3,3]);
+  const psp=mx(sp,xR,W);if(psp>=PAD&&psp<=W-PAD)dash(ctx,psp,PAD+20,psp,H-PAD,'rgba(168,255,96,.4)',[3,3]);
+  lbl(ctx,'σₓ='+sx.toFixed(3),PAD+4,PAD+14,'#00ffd4',10);lbl(ctx,'σ_p='+sp.toFixed(4),PAD+4,PAD+28,'#a8ff60',10);
+  lbl(ctx,'σₓ·σ_p='+(sx*sp).toFixed(6),PAD+4,H-8,'rgba(255,200,64,.85)',9);
+}
+
+const SWS=new Float64Array(120),SWP=new Float64Array(120);
+for(let i=0;i<120;i++){SWS[i]=0.2+i*0.034;SWP[i]=0.5;}
+
+function plotSweep(){
+  const r=sc('cv-sweep');if(!r)return;const{ctx,W,H}=r;bg(ctx,W,H);
+  const xR=[0.2,4.3],yR=[0,0.7];grid(ctx,W,H,xR,yR,6,4);
+  const p05=my(0.5,yR,H);
+  dash(ctx,PAD,p05,W-PAD,p05,'rgba(255,200,64,.7)',[5,4]);lbl(ctx,'ℏ/2 = 0.5',W-76,p05-5,'rgba(255,200,64,.85)',9);
+  line(ctx,SWS,SWP,120,xR,yR,W,H,'#a8ff60',2.5);
+  const cpx=mx(P.sigma,xR,W),cpy=my(0.5,yR,H);
+  ctx.beginPath();ctx.arc(cpx,cpy,7,0,TAU);ctx.fillStyle='#ff4f7b';ctx.shadowColor='#ff4f7b';ctx.shadowBlur=14;ctx.fill();ctx.shadowBlur=0;
+  lbl(ctx,'σₓ →',W-PAD-30,H-7,'rgba(255,255,255,.3)',9);lbl(ctx,'ΔxΔp',PAD+2,PAD+13,'#a8ff60',9);
+}
+
+const SQLDX=new Float64Array(200),SQLDP=new Float64Array(200);
+for(let i=0;i<200;i++){SQLDX[i]=0.04+i*0.027;SQLDP[i]=0.5/SQLDX[i];}
+
+function plotSQL(){
+  const r=sc('cv-sql');if(!r)return;const{ctx,W,H}=r;bg(ctx,W,H);
+  const xR=[0,5.5],yR=[0,5.5];grid(ctx,W,H,xR,yR,5,5);
+  ctx.fillStyle='rgba(255,79,123,.06)';ctx.beginPath();
+  ctx.moveTo(mx(SQLDX[0],xR,W),my(SQLDP[0],yR,H));
+  for(let i=0;i<200;i++){const py=my(SQLDP[i],yR,H);if(py<PAD)break;ctx.lineTo(mx(SQLDX[i],xR,W),py);}
+  ctx.lineTo(PAD,PAD);ctx.lineTo(PAD,H-PAD);ctx.closePath();ctx.fill();
+  const g=ctx.createLinearGradient(PAD,PAD,W-PAD,H-PAD);g.addColorStop(0,'#00ffd4');g.addColorStop(1,'#a8ff60');
+  ctx.strokeStyle=g;ctx.lineWidth=2.5;ctx.beginPath();let f=true;
+  for(let i=0;i<200;i++){const px=mx(SQLDX[i],xR,W),py=my(SQLDP[i],yR,H);if(py<PAD){f=true;continue;}if(f){ctx.moveTo(px,py);f=false;}else ctx.lineTo(px,py);}ctx.stroke();
+  ctx.strokeStyle='rgba(255,200,64,.3)';ctx.lineWidth=1;ctx.setLineDash([5,5]);ctx.beginPath();ctx.moveTo(mx(0,xR,W),my(0,yR,H));ctx.lineTo(mx(5.5,xR,W),my(5.5,yR,H));ctx.stroke();ctx.setLineDash([]);
+  const cx=P.sigma,cy=0.5/P.sigma;
+  if(cx<5.3&&cy<5.3){const cpx=mx(cx,xR,W),cpy=my(cy,yR,H);ctx.beginPath();ctx.arc(cpx,cpy,8,0,TAU);ctx.fillStyle='#ff4f7b';ctx.shadowColor='#ff4f7b';ctx.shadowBlur=18;ctx.fill();ctx.shadowBlur=0;lbl(ctx,'Current',cpx+11,cpy-7,'#ff4f7b',9);lbl(ctx,'Δx='+cx.toFixed(3),cpx+11,cpy+6,'rgba(255,79,123,.7)',8);lbl(ctx,'Δp='+cy.toFixed(3),cpx+11,cpy+17,'rgba(255,79,123,.7)',8);}
+  lbl(ctx,'Δx →',W-PAD+2,H-PAD+14,'rgba(255,255,255,.3)',10);lbl(ctx,'Δp',PAD-26,PAD+4,'rgba(255,255,255,.3)',10);
+  lbl(ctx,'FORBIDDEN',PAD+12,PAD+26,'rgba(255,79,123,.4)',10);lbl(ctx,'ΔxΔp=ℏ/2',W/2-36,H/2-38,'rgba(0,255,212,.6)',10);
+}
+
+function updateUI(m){
+  const ok=Math.abs(m.ratio-1)<0.08;
+  const s=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  const sc2=(id,c)=>{const e=document.getElementById(id);if(e)e.className='mv '+c;};
+  s('m-dx',m.dx.toFixed(5));s('m-dp',m.dp.toFixed(5));s('m-mx',m.meanX.toFixed(4));s('m-mp',m.meanP.toFixed(4));
+  s('m-prod',m.prod.toFixed(6));s('m-ratio',m.ratio.toFixed(6));sc2('m-ratio',ok?'ok':'warn');s('m-norm',m.norm.toFixed(5));
+  const bar=document.getElementById('hup-bar');if(bar){bar.style.width=Math.min(m.ratio*100,100)+'%';bar.style.background=ok?'#a8ff60':'var(--gold)';}
+  s('hup-lbl','ΔxΔp='+m.prod.toFixed(6)+(ok?' ✓ Minimum Uncertainty!':''));
+  s('hdr-prod',m.prod.toFixed(5));s('hdr-ratio',m.ratio.toFixed(5));
+  const hs=document.getElementById('hdr-status');if(hs){hs.textContent=ok?'✓ SATURATED':'⚠ NOT MIN';hs.className='hs-val '+(ok?'ok':'warn');}
+  const eq=document.getElementById('hup-eq');if(eq){eq.textContent='Δx='+m.dx.toFixed(5)+'  ×  Δp='+m.dp.toFixed(5)+'  =  '+m.prod.toFixed(7)+'  '+(ok?'= ℏ/2 ✓':'>ℏ/2');eq.style.color=ok?'#a8ff60':'var(--gold)';}
+  s('hc-dx',m.dx.toFixed(6));s('hc-dp',m.dp.toFixed(6));s('hc-prod',m.prod.toFixed(7));s('hc-ratio',m.ratio.toFixed(7)+(ok?' ✓':''));
+  const mD=Math.max(m.dx,m.dp,.001);
+  const vbdx=document.getElementById('vb-dx'),vbdp=document.getElementById('vb-dp'),vbpr=document.getElementById('vb-prod');
+  if(vbdx)vbdx.style.width=(m.dx/mD*100)+'%';if(vbdp)vbdp.style.width=(m.dp/mD*100)+'%';
+  s('vbv-dx',m.dx.toFixed(5));s('vbv-dp',m.dp.toFixed(5));
+  if(vbpr){vbpr.style.width=Math.min(m.ratio*100,100)+'%';vbpr.style.background=ok?'#a8ff60':'var(--gold)';}
+  s('vbv-prod',m.prod.toFixed(6)+' (×'+m.ratio.toFixed(4)+' ℏ/2)');
+  s('ac-dx',m.dx.toFixed(6));s('ac-dp',m.dp.toFixed(6));s('ac-prod',m.prod.toFixed(7));s('ac-ratio',m.ratio.toFixed(7)+(ok?' ✓':''));
+}
+
+function render(t){
+  animT=t;buildPsi(t);
+  if(needFFT){buildFFT();needFFT=false;}
+  updateUI(analytics(t));
+  if(activeTab==='pos'){plotReIm();plotProb();plotPhase();}
+  else if(activeTab==='mom'){plotMom();plotMomRe();plotTradeoff();}
+  else if(activeTab==='hup'){plotReIm();plotSweep();plotSQL();}
+}
+
+function animLoop(ts){
+  if(!animating)return;
+  if(ts-lastFt>=15){lastFt=ts;animT+=0.04;if(animT>12)animT=-3;render(animT);}
+  animFrame=requestAnimationFrame(animLoop);
+}
+
+function toggleAnim(){
+  animating=!animating;const btn=document.getElementById('btn-anim');
+  if(animating){btn.classList.add('active');btn.textContent='⏹ Stop Animation';lastFt=performance.now();animFrame=requestAnimationFrame(animLoop);}
+  else{btn.classList.remove('active');btn.textContent='⟳ Animate Time';cancelAnimationFrame(animFrame);render(0);}
+}
+
+function onParam(){
+  const np={sigma:parseFloat(document.getElementById('sl-sigma').value),x0:parseFloat(document.getElementById('sl-x0').value),k0:parseFloat(document.getElementById('sl-k0').value),amp:parseFloat(document.getElementById('sl-amp').value)};
+  document.getElementById('v-sigma').textContent=np.sigma.toFixed(2);document.getElementById('v-x0').textContent=np.x0.toFixed(2);document.getElementById('v-k0').textContent=np.k0.toFixed(2);document.getElementById('v-amp').textContent=np.amp.toFixed(2);
+  if(np.sigma!==P.sigma||np.amp!==P.amp)needFFT=true;P=np;if(!animating)render(animT);
+}
+
+function preset(sigma,x0,k0,amp){
+  document.getElementById('sl-sigma').value=sigma;document.getElementById('sl-x0').value=x0;document.getElementById('sl-k0').value=k0;document.getElementById('sl-amp').value=amp;
+  P={sigma,x0,k0,amp};needFFT=true;
+  document.getElementById('v-sigma').textContent=sigma.toFixed(2);document.getElementById('v-x0').textContent=x0.toFixed(2);document.getElementById('v-k0').textContent=k0.toFixed(2);document.getElementById('v-amp').textContent=amp.toFixed(2);
+  animT=0;render(0);
+}
+
+function resetSim(){animT=0;needFFT=true;render(0);}
+
+function switchTab(id,el){
+  activeTab=id;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));document.getElementById('tab-'+id).classList.add('active');
+  Object.keys(CTX).forEach(k=>delete CTX[k]);needFFT=true;render(animT);
+}
+
+window.addEventListener('resize',()=>{Object.keys(CTX).forEach(k=>delete CTX[k]);render(animT);});
+window.addEventListener('load',()=>{P={sigma:parseFloat(document.getElementById('sl-sigma').value),x0:parseFloat(document.getElementById('sl-x0').value),k0:parseFloat(document.getElementById('sl-k0').value),amp:parseFloat(document.getElementById('sl-amp').value)};needFFT=true;render(0);});
+</script>
+</body>
+</html>
