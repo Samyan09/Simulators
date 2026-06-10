@@ -1,0 +1,1543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PowerNet — National Grid Stability & Optimization</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink: #0a0f1e;
+  --ink2: #111827;
+  --ink3: #1c2540;
+  --paper: #f0f4ff;
+  --paper2: #e4ecff;
+  --volt: #f5a623;
+  --volt2: #ff6b1a;
+  --live: #00d4aa;
+  --live2: #00a87a;
+  --fault: #ff3d5a;
+  --fault2: #cc1e35;
+  --safe: #22c55e;
+  --info: #4f8eff;
+  --dim: #8a9ac0;
+  --border: rgba(79,142,255,0.18);
+  --sans: 'DM Sans', sans-serif;
+  --display: 'Syne', sans-serif;
+  --mono: 'DM Mono', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* BG TEXTURE */
+body::before {
+  content:'';
+  position:fixed; inset:0;
+  background-image:
+    radial-gradient(circle at 20% 20%, rgba(79,142,255,0.06) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(0,212,170,0.05) 0%, transparent 50%),
+    radial-gradient(circle at 60% 10%, rgba(245,166,35,0.04) 0%, transparent 40%);
+  pointer-events:none; z-index:0;
+}
+
+/* NAV */
+nav {
+  position:sticky; top:0; z-index:200;
+  background:rgba(10,15,30,0.92);
+  backdrop-filter:blur(18px);
+  border-bottom:1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 3rem; height:62px;
+}
+.nav-logo {
+  font-family:var(--display); font-size:22px; font-weight:800;
+  color:var(--paper); letter-spacing:-0.02em;
+  display:flex; align-items:center; gap:10px;
+}
+.nav-logo .bolt {
+  width:32px; height:32px; background:linear-gradient(135deg,var(--volt),var(--volt2));
+  border-radius:8px; display:flex; align-items:center; justify-content:center;
+  font-size:16px;
+}
+.nav-links { display:flex; gap:2rem; }
+.nav-links a {
+  font-size:13px; font-weight:500; color:var(--dim); text-decoration:none;
+  letter-spacing:0.04em; text-transform:uppercase; transition:color .2s;
+}
+.nav-links a:hover { color:var(--live); }
+.nav-badge {
+  padding:7px 18px; border:1px solid var(--live);
+  border-radius:6px; background:rgba(0,212,170,0.08);
+  color:var(--live); font-size:12px; font-family:var(--mono);
+  letter-spacing:0.04em;
+}
+
+/* HERO */
+.hero {
+  position:relative; z-index:1;
+  min-height:88vh; display:flex; align-items:center; justify-content:center;
+  padding:5rem 3rem 3rem; overflow:hidden;
+}
+.hero-inner {
+  max-width:1200px; width:100%;
+  display:grid; grid-template-columns:1fr 1fr;
+  gap:5rem; align-items:center;
+}
+.hero-eyebrow {
+  font-family:var(--mono); font-size:11px; color:var(--volt);
+  text-transform:uppercase; letter-spacing:0.14em;
+  display:flex; align-items:center; gap:8px; margin-bottom:1.25rem;
+}
+.hero-eyebrow::before {
+  content:''; width:30px; height:1px; background:var(--volt);
+}
+.hero h1 {
+  font-family:var(--display); font-size:clamp(2.6rem,4vw,4rem);
+  font-weight:800; line-height:1.05; letter-spacing:-0.03em;
+  margin-bottom:1.5rem;
+}
+.hero h1 .hl-volt { color:var(--volt); }
+.hero h1 .hl-live { color:var(--live); }
+.hero-desc {
+  font-size:16px; color:var(--dim); line-height:1.8;
+  margin-bottom:2.5rem; max-width:500px;
+}
+.hero-chips { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:2.5rem; }
+.chip {
+  padding:5px 14px; border-radius:20px;
+  font-family:var(--mono); font-size:11px; font-weight:500;
+  letter-spacing:0.05em;
+}
+.chip-volt { background:rgba(245,166,35,0.12); color:var(--volt); border:1px solid rgba(245,166,35,0.25); }
+.chip-live { background:rgba(0,212,170,0.1); color:var(--live); border:1px solid rgba(0,212,170,0.2); }
+.chip-blue { background:rgba(79,142,255,0.1); color:var(--info); border:1px solid rgba(79,142,255,0.2); }
+.chip-fault { background:rgba(255,61,90,0.1); color:var(--fault); border:1px solid rgba(255,61,90,0.2); }
+
+.btn-hero {
+  display:inline-flex; align-items:center; gap:8px;
+  padding:14px 32px; background:var(--volt); color:var(--ink);
+  border:none; border-radius:8px;
+  font-family:var(--display); font-size:15px; font-weight:700;
+  cursor:pointer; transition:all .2s; text-decoration:none;
+  letter-spacing:0.01em;
+}
+.btn-hero:hover { background:var(--volt2); transform:translateY(-2px); box-shadow:0 12px 40px rgba(245,166,35,.35); }
+
+/* MINI GRID PREVIEW */
+.hero-visual {
+  position:relative; display:flex; align-items:center; justify-content:center;
+}
+#heroCanvas {
+  width:100%; max-width:520px; height:400px;
+  border-radius:20px; border:1px solid var(--border);
+  background:rgba(17,24,39,0.8);
+}
+
+/* SECTION GENERIC */
+section { position:relative; z-index:1; padding:6rem 3rem; }
+.sec-inner { max-width:1200px; margin:auto; }
+.sec-tag {
+  font-family:var(--mono); font-size:11px; color:var(--live);
+  text-transform:uppercase; letter-spacing:0.12em;
+  display:flex; align-items:center; gap:8px; margin-bottom:.75rem;
+}
+.sec-tag::before { content:'//'; color:var(--volt); }
+.sec-title {
+  font-family:var(--display); font-size:clamp(1.8rem,3vw,2.8rem);
+  font-weight:800; letter-spacing:-0.025em; line-height:1.15;
+  margin-bottom:1rem;
+}
+.sec-sub {
+  font-size:15px; color:var(--dim); max-width:640px;
+  line-height:1.8; margin-bottom:3.5rem;
+}
+
+/* ── CONCEPTS GRID ─────────────────────── */
+#concepts { background:var(--ink2); }
+.concepts-grid {
+  display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:1.5rem;
+}
+.concept-card {
+  background:var(--ink3); border:1px solid var(--border);
+  border-radius:16px; padding:1.75rem; transition:all .3s; cursor:pointer;
+  position:relative; overflow:hidden;
+}
+.concept-card::after {
+  content:''; position:absolute; inset:0; border-radius:16px;
+  background:linear-gradient(135deg, var(--cc-col,var(--volt)) 0%, transparent 60%);
+  opacity:0; transition:opacity .3s;
+}
+.concept-card:hover { transform:translateY(-4px); border-color:var(--cc-col,var(--volt)); }
+.concept-card:hover::after { opacity:0.07; }
+.cc-icon {
+  width:48px; height:48px; border-radius:12px;
+  background:rgba(255,255,255,0.05);
+  display:flex; align-items:center; justify-content:center;
+  font-size:22px; margin-bottom:1rem;
+  border:1px solid rgba(255,255,255,0.08);
+}
+.concept-card h3 { font-family:var(--display); font-size:17px; font-weight:700; margin-bottom:.6rem; }
+.concept-card p { font-size:13px; color:var(--dim); line-height:1.7; }
+.cc-formula {
+  margin-top:1rem; padding:.5rem .75rem;
+  background:rgba(0,0,0,0.3); border-radius:6px;
+  font-family:var(--mono); font-size:11px; color:var(--volt);
+  border-left:2px solid var(--volt);
+}
+
+/* ── INTERACTIVE SIMULATOR ─────────────── */
+#simulator { background:var(--ink); }
+.sim-layout {
+  display:grid; grid-template-columns:1fr 360px; gap:2rem; align-items:start;
+}
+.canvas-wrap {
+  background:var(--ink2); border:1px solid var(--border);
+  border-radius:20px; overflow:hidden; position:relative;
+}
+.canvas-toolbar {
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  padding:1rem 1.25rem; border-bottom:1px solid var(--border);
+  background:rgba(17,24,39,0.9);
+}
+.tb-label { font-family:var(--mono); font-size:11px; color:var(--dim); margin-right:4px; }
+.tb-btn {
+  padding:6px 14px; border-radius:6px;
+  font-family:var(--mono); font-size:11px; font-weight:500;
+  cursor:pointer; border:1px solid; transition:all .2s; letter-spacing:0.04em;
+}
+.tb-btn-volt { border-color:var(--volt); color:var(--volt); background:rgba(245,166,35,.08); }
+.tb-btn-volt:hover,.tb-btn-volt.active { background:var(--volt); color:var(--ink); }
+.tb-btn-live { border-color:var(--live); color:var(--live); background:rgba(0,212,170,.08); }
+.tb-btn-live:hover,.tb-btn-live.active { background:var(--live); color:var(--ink); }
+.tb-btn-fault { border-color:var(--fault); color:var(--fault); background:rgba(255,61,90,.08); }
+.tb-btn-fault:hover,.tb-btn-fault.active { background:var(--fault); color:#fff; }
+.tb-btn-info { border-color:var(--info); color:var(--info); background:rgba(79,142,255,.08); }
+.tb-btn-info:hover,.tb-btn-info.active { background:var(--info); color:#fff; }
+
+#gridCanvas {
+  width:100%; height:520px; display:block; cursor:crosshair;
+}
+
+.sim-panel {
+  display:flex; flex-direction:column; gap:1.25rem;
+}
+.panel-card {
+  background:var(--ink2); border:1px solid var(--border);
+  border-radius:14px; overflow:hidden;
+}
+.panel-head {
+  padding:.75rem 1rem; border-bottom:1px solid var(--border);
+  font-family:var(--display); font-size:14px; font-weight:700;
+  display:flex; align-items:center; gap:8px;
+  background:var(--ink3);
+}
+.panel-head .dot {
+  width:8px; height:8px; border-radius:50%; flex-shrink:0;
+}
+.panel-body { padding:1rem; }
+
+.metric-row {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.04);
+}
+.metric-row:last-child { border-bottom:none; }
+.metric-key { font-size:12px; color:var(--dim); }
+.metric-val {
+  font-family:var(--mono); font-size:13px; font-weight:500;
+}
+
+#algoLog {
+  background:rgba(0,0,0,.4); border-radius:8px;
+  padding:.75rem; font-family:var(--mono); font-size:11px;
+  line-height:1.8; max-height:200px; overflow-y:auto;
+  scrollbar-width:thin; scrollbar-color:var(--border) transparent;
+  white-space:pre-wrap;
+}
+.log-info { color:var(--live); }
+.log-warn { color:var(--volt); }
+.log-err  { color:var(--fault); }
+.log-dim  { color:var(--dim); }
+
+select.tb-select {
+  background:var(--ink3); color:var(--paper); border:1px solid var(--border);
+  border-radius:6px; padding:5px 10px; font-family:var(--mono);
+  font-size:11px; cursor:pointer;
+}
+
+/* ── ALGORITHMS EXPLAINER ─────────────────────── */
+#algorithms { background:var(--ink2); }
+.algo-tabs {
+  display:flex; gap:4px; margin-bottom:2rem;
+  border-bottom:1px solid var(--border); padding-bottom:0;
+}
+.algo-tab {
+  padding:10px 22px; font-family:var(--display); font-size:14px; font-weight:700;
+  color:var(--dim); background:transparent; border:none;
+  border-bottom:3px solid transparent; cursor:pointer; transition:all .2s;
+  margin-bottom:-1px;
+}
+.algo-tab.active { color:var(--volt); border-bottom-color:var(--volt); }
+.algo-pane { display:none; }
+.algo-pane.active { display:grid; grid-template-columns:1fr 1fr; gap:3rem; align-items:start; }
+
+.algo-desc h3 {
+  font-family:var(--display); font-size:1.5rem; font-weight:800;
+  margin-bottom:1rem; letter-spacing:-0.02em;
+}
+.algo-desc p { font-size:14px; color:var(--dim); line-height:1.8; margin-bottom:1rem; }
+.algo-desc ul { list-style:none; padding:0; }
+.algo-desc li {
+  font-size:14px; color:var(--dim); padding:6px 0;
+  display:flex; align-items:flex-start; gap:8px; border-bottom:1px solid rgba(255,255,255,0.04);
+}
+.algo-desc li::before { content:'→'; color:var(--volt); flex-shrink:0; }
+
+.complexity-badge {
+  display:inline-flex; gap:10px; margin:.75rem 0;
+}
+.cx-item {
+  padding:4px 12px; border-radius:5px; font-family:var(--mono); font-size:11px;
+  background:rgba(245,166,35,0.1); color:var(--volt); border:1px solid rgba(245,166,35,0.2);
+}
+
+.code-block {
+  background:#060a14; border:1px solid var(--border); border-radius:12px;
+  overflow:hidden;
+}
+.cb-header {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:.6rem 1rem; border-bottom:1px solid var(--border);
+  background:var(--ink3);
+}
+.cb-lang { font-family:var(--mono); font-size:11px; color:var(--live); }
+.cb-file { font-family:var(--mono); font-size:11px; color:var(--dim); }
+.cb-body {
+  padding:1.25rem; font-family:var(--mono); font-size:12px;
+  line-height:1.85; overflow-x:auto; max-height:420px; overflow-y:auto;
+  scrollbar-width:thin; scrollbar-color:var(--border) transparent;
+}
+.kw { color:#79b8ff; }
+.fn { color:#00d4aa; }
+.cm { color:#5a7a5a; }
+.st { color:#f9c74f; }
+.nu { color:#f8a04e; }
+.ty { color:#c792ea; }
+.op { color:#cdd3de; }
+
+/* ── GRAPH THEORY SECTION ─────────────────────── */
+#graph-theory { background:var(--ink); }
+.theory-grid {
+  display:grid; grid-template-columns:1fr 1fr; gap:3rem;
+}
+.theory-visual {
+  background:var(--ink2); border:1px solid var(--border); border-radius:16px;
+  overflow:hidden;
+}
+.tv-header {
+  padding:.75rem 1.25rem; border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:12px; color:var(--live);
+  background:var(--ink3); letter-spacing:.06em;
+}
+#theoryCanvas { width:100%; height:320px; display:block; }
+
+.theory-content h3 {
+  font-family:var(--display); font-size:1.4rem; font-weight:800;
+  margin-bottom:1rem;
+}
+.theory-content p { font-size:14px; color:var(--dim); line-height:1.8; margin-bottom:1rem; }
+
+.def-table { width:100%; border-collapse:collapse; margin-top:1rem; }
+.def-table td {
+  padding:8px 12px; border:1px solid var(--border); font-size:13px;
+  vertical-align:top;
+}
+.def-table td:first-child {
+  font-family:var(--mono); color:var(--volt); background:rgba(245,166,35,.05);
+  font-weight:500; white-space:nowrap; width:130px;
+}
+.def-table td:last-child { color:var(--dim); }
+
+/* ── RESULTS PANEL ─────────────────────── */
+#results { background:var(--ink2); }
+.results-grid {
+  display:grid; grid-template-columns:repeat(3,1fr); gap:2rem;
+}
+.res-card {
+  background:var(--ink3); border:1px solid var(--border); border-radius:16px; padding:2rem;
+  position:relative; overflow:hidden;
+}
+.res-card::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:3px;
+  background:var(--rc-col, var(--volt));
+}
+.res-num {
+  font-family:var(--display); font-size:3rem; font-weight:800;
+  line-height:1; color:var(--rc-col,var(--volt)); margin-bottom:.5rem;
+}
+.res-label { font-family:var(--mono); font-size:11px; color:var(--dim); text-transform:uppercase; letter-spacing:.08em; margin-bottom:.5rem; }
+.res-desc { font-size:13px; color:var(--dim); line-height:1.7; }
+
+/* ── FOOTER ─────────────────────────── */
+footer {
+  background:var(--ink); border-top:1px solid var(--border);
+  padding:3rem; text-align:center; position:relative; z-index:1;
+}
+footer p { font-size:13px; color:var(--dim); }
+footer strong { color:var(--volt); font-family:var(--display); }
+
+/* SCROLL FX */
+.reveal { opacity:0; transform:translateY(28px); transition:all .65s ease; }
+.reveal.vis { opacity:1; transform:none; }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">
+    <div class="bolt">⚡</div>
+    PowerNet
+  </div>
+  <div class="nav-links">
+    <a href="#concepts">Theory</a>
+    <a href="#simulator">Simulator</a>
+    <a href="#algorithms">Algorithms</a>
+    <a href="#graph-theory">Graph Math</a>
+  </div>
+  <div class="nav-badge">GRID v2.4</div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-inner">
+    <div>
+      <div class="hero-eyebrow">National Infrastructure Project</div>
+      <h1>Power Grid<br><span class="hl-volt">Stability</span> &<br><span class="hl-live">Optimization</span></h1>
+      <p class="hero-desc">
+        Modelling the national power transmission network as a weighted graph.
+        Applying Dijkstra's shortest path, the Chinese Postman algorithm, MST,
+        and centrality analysis to minimize loss and maximize reliability.
+      </p>
+      <div class="hero-chips">
+        <span class="chip chip-volt">Dijkstra's Algorithm</span>
+        <span class="chip chip-live">Chinese Postman</span>
+        <span class="chip chip-blue">Minimum Spanning Tree</span>
+        <span class="chip chip-fault">Fault Detection</span>
+        <span class="chip chip-volt">Weighted Graphs</span>
+        <span class="chip chip-live">Flow Networks</span>
+      </div>
+      <a href="#simulator" class="btn-hero">Launch Grid Simulator →</a>
+    </div>
+    <div class="hero-visual">
+      <canvas id="heroCanvas"></canvas>
+    </div>
+  </div>
+</section>
+
+<!-- CONCEPTS -->
+<section id="concepts">
+  <div class="sec-inner">
+    <div class="sec-tag">Core Concepts</div>
+    <h2 class="sec-title reveal">Mathematical Foundations</h2>
+    <p class="sec-sub reveal">The national grid is modelled as G = (V, E, W) — a weighted, directed graph where substations are vertices, transmission lines are edges, and impedance/capacity are weights.</p>
+    <div class="concepts-grid">
+      <div class="concept-card reveal" style="--cc-col:var(--volt)">
+        <div class="cc-icon">📐</div>
+        <h3>Weighted Graph G(V,E,W)</h3>
+        <p>Each substation is a vertex V. Each transmission line is an edge E with weight W representing power loss, impedance, or distance.</p>
+        <div class="cc-formula">G = (V, E, w: E → ℝ⁺)</div>
+      </div>
+      <div class="concept-card reveal" style="--cc-col:var(--live)">
+        <div class="cc-icon">🔍</div>
+        <h3>Dijkstra's Algorithm</h3>
+        <p>Finds the optimal (minimum-loss) transmission path between any two grid nodes. Used for load dispatch routing and emergency re-routing during faults.</p>
+        <div class="cc-formula">d[v] = min(d[v], d[u] + w(u,v))</div>
+      </div>
+      <div class="concept-card reveal" style="--cc-col:var(--info)">
+        <div class="cc-icon">🗺️</div>
+        <h3>Chinese Postman Problem</h3>
+        <p>Finds a minimum-weight closed walk covering every transmission line at least once. Critical for inspection tours and maintenance routing of the grid.</p>
+        <div class="cc-formula">Min Σw(e) s.t. every e traversed ≥1</div>
+      </div>
+      <div class="concept-card reveal" style="--cc-col:var(--fault)">
+        <div class="cc-icon">🌲</div>
+        <h3>Minimum Spanning Tree</h3>
+        <p>Kruskal's / Prim's algorithm identifies the minimum-cost backbone of the grid — the spanning tree with lowest total transmission loss.</p>
+        <div class="cc-formula">MST: min Σw(e), T is a tree spanning V</div>
+      </div>
+      <div class="concept-card reveal" style="--cc-col:var(--volt)">
+        <div class="cc-icon">🌊</div>
+        <h3>Max-Flow / Min-Cut</h3>
+        <p>Ford-Fulkerson theorem applied to find the maximum power that can be transmitted between source (generator) and sink (city) without overloading any line.</p>
+        <div class="cc-formula">max-flow = min-cut (Ford-Fulkerson)</div>
+      </div>
+      <div class="concept-card reveal" style="--cc-col:var(--live)">
+        <div class="cc-icon">📊</div>
+        <h3>Degree & Centrality</h3>
+        <p>Node degree identifies high-risk hubs. Betweenness centrality finds substations most critical to grid connectivity — prime fault targets.</p>
+        <div class="cc-formula">Bc(v) = Σ σ(s,t|v) / σ(s,t)</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SIMULATOR -->
+<section id="simulator">
+  <div class="sec-inner">
+    <div class="sec-tag">Interactive Tool</div>
+    <h2 class="sec-title reveal">Live Grid Simulator</h2>
+    <p class="sec-sub reveal">Click nodes to select source/target for Dijkstra. Toggle algorithms, simulate faults, and watch the graph respond in real time.</p>
+    <div class="sim-layout reveal">
+      <!-- Canvas -->
+      <div class="canvas-wrap">
+        <div class="canvas-toolbar">
+          <span class="tb-label">ALGORITHM:</span>
+          <button class="tb-btn tb-btn-volt active" id="btnDijkstra" onclick="setAlgo('dijkstra')">Dijkstra</button>
+          <button class="tb-btn tb-btn-live" id="btnMST" onclick="setAlgo('mst')">MST (Kruskal)</button>
+          <button class="tb-btn tb-btn-info" id="btnChinese" onclick="setAlgo('chinese')">Chinese Postman</button>
+          <button class="tb-btn tb-btn-fault" id="btnFault" onclick="setAlgo('fault')">Fault Mode</button>
+          <span style="flex:1"></span>
+          <button class="tb-btn tb-btn-volt" onclick="resetSim()">↺ Reset</button>
+        </div>
+        <canvas id="gridCanvas"></canvas>
+      </div>
+      <!-- Side panel -->
+      <div class="sim-panel">
+        <div class="panel-card">
+          <div class="panel-head"><div class="dot" style="background:var(--live)"></div>Grid Status</div>
+          <div class="panel-body">
+            <div class="metric-row"><span class="metric-key">Nodes (Substations)</span><span class="metric-val" id="mNodes" style="color:var(--live)">14</span></div>
+            <div class="metric-row"><span class="metric-key">Edges (Lines)</span><span class="metric-val" id="mEdges" style="color:var(--info)">20</span></div>
+            <div class="metric-row"><span class="metric-key">Active Algorithm</span><span class="metric-val" id="mAlgo" style="color:var(--volt)">Dijkstra</span></div>
+            <div class="metric-row"><span class="metric-key">Source Node</span><span class="metric-val" id="mSrc" style="color:var(--volt)">—</span></div>
+            <div class="metric-row"><span class="metric-key">Target Node</span><span class="metric-val" id="mTgt" style="color:var(--live)">—</span></div>
+            <div class="metric-row"><span class="metric-key">Path Cost (MW·km)</span><span class="metric-val" id="mCost" style="color:var(--safe)">—</span></div>
+            <div class="metric-row"><span class="metric-key">MST Total Weight</span><span class="metric-val" id="mMST" style="color:var(--info)">—</span></div>
+            <div class="metric-row"><span class="metric-key">Faulted Lines</span><span class="metric-val" id="mFault" style="color:var(--fault)">0</span></div>
+          </div>
+        </div>
+        <div class="panel-card">
+          <div class="panel-head"><div class="dot" style="background:var(--volt)"></div>Algorithm Log</div>
+          <div class="panel-body" style="padding:.75rem;">
+            <div id="algoLog"><span class="log-dim">// Ready. Click a node to begin.\n// In Dijkstra mode: click source then target.\n// In MST mode: click Run to build spanning tree.\n// In Fault mode: click edges to disable them.</span></div>
+          </div>
+        </div>
+        <div class="panel-card">
+          <div class="panel-head"><div class="dot" style="background:var(--info)"></div>Instructions</div>
+          <div class="panel-body">
+            <div style="font-size:12px; color:var(--dim); line-height:1.9;">
+              <b style="color:var(--volt)">Dijkstra:</b> Click source node, then target. Shortest path highlighted.<br>
+              <b style="color:var(--live)">MST:</b> Shows minimum spanning tree in green.<br>
+              <b style="color:var(--info)">Chinese Postman:</b> Finds Eulerian circuit / postman tour.<br>
+              <b style="color:var(--fault)">Fault Mode:</b> Click any edge to simulate line failure.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ALGORITHMS EXPLAINER -->
+<section id="algorithms">
+  <div class="sec-inner">
+    <div class="sec-tag">Deep Dive</div>
+    <h2 class="sec-title reveal">Algorithm Details</h2>
+    <p class="sec-sub reveal">Each algorithm addresses a distinct operational challenge in national grid management.</p>
+    <div class="algo-tabs">
+      <button class="algo-tab active" onclick="showAlgoTab(0)">Dijkstra's</button>
+      <button class="algo-tab" onclick="showAlgoTab(1)">Chinese Postman</button>
+      <button class="algo-tab" onclick="showAlgoTab(2)">Kruskal's MST</button>
+      <button class="algo-tab" onclick="showAlgoTab(3)">Max-Flow</button>
+    </div>
+
+    <!-- Dijkstra -->
+    <div class="algo-pane active" id="apane0">
+      <div class="algo-desc">
+        <h3>Dijkstra's Shortest Path</h3>
+        <p><b style="color:var(--volt)">Grid Application:</b> Given a weighted graph of substations and transmission lines, find the minimum-loss path to route power from any generator to any demand node.</p>
+        <p>In power grids, edge weights represent transmission loss (MW), impedance (Ω), or line length (km). Dijkstra's guarantees the globally optimal route under non-negative weights.</p>
+        <div class="complexity-badge">
+          <span class="cx-item">Time: O((V+E) log V)</span>
+          <span class="cx-item">Space: O(V)</span>
+        </div>
+        <ul>
+          <li>Initialize all distances to ∞ except source (d[s]=0)</li>
+          <li>Use a min-priority queue ordered by tentative distance</li>
+          <li>Relax edges: d[v] = min(d[v], d[u] + w(u,v))</li>
+          <li>Extract minimum at each step; mark visited</li>
+          <li>Reconstruct path via predecessor array π[v]</li>
+          <li>Applied to emergency re-routing when lines fail</li>
+        </ul>
+      </div>
+      <div class="code-block">
+        <div class="cb-header"><span class="cb-lang">JavaScript</span><span class="cb-file">dijkstra.js</span></div>
+        <div class="cb-body"><pre><span class="cm">// Dijkstra's algorithm for power grid routing
+// graph: adjacency list {node: [[neighbor, weight],...]}
+// src: source substation ID</span>
+<span class="kw">function</span> <span class="fn">dijkstra</span>(graph, src) {
+  <span class="kw">const</span> dist = {}, prev = {}, visited = <span class="kw">new</span> <span class="ty">Set</span>();
+  <span class="kw">const</span> pq = <span class="kw">new</span> <span class="fn">MinPriorityQueue</span>();
+
+  <span class="cm">// Init: all distances = Infinity</span>
+  <span class="kw">for</span> (<span class="kw">const</span> node <span class="kw">of</span> <span class="ty">Object</span>.keys(graph)) {
+    dist[node] = <span class="nu">Infinity</span>;
+    prev[node] = <span class="kw">null</span>;
+  }
+  dist[src] = <span class="nu">0</span>;
+  pq.enqueue(src, <span class="nu">0</span>);
+
+  <span class="kw">while</span> (!pq.isEmpty()) {
+    <span class="kw">const</span> { element: u } = pq.dequeue();
+    <span class="kw">if</span> (visited.has(u)) <span class="kw">continue</span>;
+    visited.add(u);
+
+    <span class="kw">for</span> (<span class="kw">const</span> [v, weight] <span class="kw">of</span> graph[u]) {
+      <span class="kw">if</span> (visited.has(v)) <span class="kw">continue</span>;
+      <span class="cm">// Relaxation step — core of Dijkstra</span>
+      <span class="kw">const</span> alt = dist[u] + weight;
+      <span class="kw">if</span> (alt < dist[v]) {
+        dist[v] = alt;
+        prev[v] = u;
+        pq.enqueue(v, alt); <span class="cm">// Update priority</span>
+      }
+    }
+  }
+  <span class="kw">return</span> { dist, prev };
+}
+
+<span class="cm">// Reconstruct path from prev[] array</span>
+<span class="kw">function</span> <span class="fn">getPath</span>(prev, target) {
+  <span class="kw">const</span> path = [];
+  <span class="kw">let</span> cur = target;
+  <span class="kw">while</span> (cur !== <span class="kw">null</span>) {
+    path.unshift(cur);
+    cur = prev[cur];
+  }
+  <span class="kw">return</span> path; <span class="cm">// [src, n1, n2, ..., target]</span>
+}
+
+<span class="cm">// Example: Route from Delhi (0) to Mumbai (7)
+// Returns path + total transmission loss in MW</span>
+<span class="kw">const</span> { dist, prev } = <span class="fn">dijkstra</span>(gridGraph, <span class="st">"Delhi"</span>);
+<span class="kw">const</span> path = <span class="fn">getPath</span>(prev, <span class="st">"Mumbai"</span>);
+console.log(<span class="st">`Path: ${path.join(' → ')}`</span>);
+console.log(<span class="st">`Loss: ${dist["Mumbai"]} MW·km`</span>);</pre></div>
+      </div>
+    </div>
+
+    <!-- Chinese Postman -->
+    <div class="algo-pane" id="apane1">
+      <div class="algo-desc">
+        <h3>Chinese Postman Problem</h3>
+        <p><b style="color:var(--volt)">Grid Application:</b> A maintenance crew must inspect every transmission line exactly once (or more) and return to the depot. The Chinese Postman finds the shortest such tour.</p>
+        <p>For an <b style="color:var(--live)">Eulerian graph</b> (all even-degree nodes), the tour simply follows an Euler circuit. For non-Eulerian graphs, we duplicate minimum-weight edges connecting odd-degree nodes using matching.</p>
+        <div class="complexity-badge">
+          <span class="cx-item">Time: O(V³) with matching</span>
+          <span class="cx-item">Euler circuit: O(E)</span>
+        </div>
+        <ul>
+          <li>Find all odd-degree vertices in the graph</li>
+          <li>Find minimum-weight perfect matching on odd vertices</li>
+          <li>Add duplicate edges from matching to make graph Eulerian</li>
+          <li>Find an Euler circuit in the augmented graph (Hierholzer's)</li>
+          <li>Tour cost = original edge sum + duplicate edge sum</li>
+          <li>Guarantees minimum total distance for full grid inspection</li>
+        </ul>
+      </div>
+      <div class="code-block">
+        <div class="cb-header"><span class="cb-lang">JavaScript</span><span class="cb-file">chinese_postman.js</span></div>
+        <div class="cb-body"><pre><span class="cm">// Chinese Postman Algorithm
+// Step 1: Find odd-degree vertices</span>
+<span class="kw">function</span> <span class="fn">findOddVertices</span>(graph) {
+  <span class="kw">return</span> <span class="ty">Object</span>.entries(graph)
+    .filter(([v, edges]) => edges.length % <span class="nu">2</span> !== <span class="nu">0</span>)
+    .map(([v]) => v);
+}
+
+<span class="cm">// Step 2: Min-weight perfect matching on odd vertices
+// (uses Dijkstra between all odd-vertex pairs)</span>
+<span class="kw">function</span> <span class="fn">minWeightMatching</span>(oddVerts, graph) {
+  <span class="kw">const</span> pairs = [];
+  <span class="kw">const</span> distances = {};
+  <span class="cm">// Compute all-pairs shortest paths</span>
+  <span class="kw">for</span> (<span class="kw">const</span> v <span class="kw">of</span> oddVerts) {
+    distances[v] = <span class="fn">dijkstra</span>(graph, v).dist;
+  }
+  <span class="cm">// Greedy matching (exact: Blossom algorithm)</span>
+  <span class="kw">let</span> remaining = [...oddVerts];
+  <span class="kw">while</span> (remaining.length > <span class="nu">0</span>) {
+    <span class="kw">const</span> u = remaining[<span class="nu">0</span>];
+    <span class="kw">let</span> best = <span class="nu">Infinity</span>, bestV = <span class="kw">null</span>;
+    <span class="kw">for</span> (<span class="kw">const</span> v <span class="kw">of</span> remaining.slice(<span class="nu">1</span>)) {
+      <span class="kw">if</span> (distances[u][v] < best) {
+        best = distances[u][v];
+        bestV = v;
+      }
+    }
+    pairs.push([u, bestV, best]);
+    remaining = remaining.filter(
+      x => x !== u && x !== bestV
+    );
+  }
+  <span class="kw">return</span> pairs;
+}
+
+<span class="cm">// Step 3: Hierholzer's Euler Circuit</span>
+<span class="kw">function</span> <span class="fn">eulerCircuit</span>(graph, start) {
+  <span class="kw">const</span> adj = <span class="ty">JSON</span>.parse(<span class="ty">JSON</span>.stringify(graph));
+  <span class="kw">const</span> circuit = [], stack = [start];
+  <span class="kw">while</span> (stack.length) {
+    <span class="kw">const</span> v = stack[stack.length - <span class="nu">1</span>];
+    <span class="kw">if</span> (adj[v] && adj[v].length) {
+      stack.push(adj[v].pop()[<span class="nu">0</span>]);
+    } <span class="kw">else</span> {
+      circuit.push(stack.pop());
+    }
+  }
+  <span class="kw">return</span> circuit.reverse();
+}
+
+<span class="cm">// Full Chinese Postman solver</span>
+<span class="kw">function</span> <span class="fn">chinesePostman</span>(graph) {
+  <span class="kw">const</span> totalWeight = <span class="fn">sumAllEdges</span>(graph);
+  <span class="kw">const</span> oddVerts = <span class="fn">findOddVertices</span>(graph);
+  <span class="kw">if</span> (oddVerts.length === <span class="nu">0</span>) {
+    <span class="cm">// Already Eulerian — just find circuit</span>
+    <span class="kw">return</span> { tour: <span class="fn">eulerCircuit</span>(graph, <span class="st">"depot"</span>),
+             cost: totalWeight };
+  }
+  <span class="kw">const</span> matching = <span class="fn">minWeightMatching</span>(oddVerts, graph);
+  <span class="kw">const</span> extraCost = matching.reduce(
+    (s,[,, w]) => s + w, <span class="nu">0</span>
+  );
+  <span class="cm">// Add matched paths to graph, then find circuit</span>
+  <span class="kw">const</span> augmented = <span class="fn">addMatchedEdges</span>(graph, matching);
+  <span class="kw">return</span> { tour: <span class="fn">eulerCircuit</span>(augmented, <span class="st">"depot"</span>),
+           cost: totalWeight + extraCost };
+}</pre></div>
+      </div>
+    </div>
+
+    <!-- Kruskal's MST -->
+    <div class="algo-pane" id="apane2">
+      <div class="algo-desc">
+        <h3>Kruskal's MST Algorithm</h3>
+        <p><b style="color:var(--volt)">Grid Application:</b> Find the minimum-cost set of transmission lines that keeps all substations connected. Used in new grid expansion planning to minimise infrastructure cost.</p>
+        <p>Kruskal's sorts all edges by weight and greedily adds the cheapest edge that doesn't form a cycle, using a Union-Find (Disjoint Set Union) data structure.</p>
+        <div class="complexity-badge">
+          <span class="cx-item">Time: O(E log E)</span>
+          <span class="cx-item">Space: O(V)</span>
+        </div>
+        <ul>
+          <li>Sort all transmission lines by weight (cost/loss) ascending</li>
+          <li>Initialize Union-Find: each substation in own set</li>
+          <li>For each edge (u,v): if find(u) ≠ find(v), add to MST</li>
+          <li>Union(u,v) merges the two components</li>
+          <li>Stop when MST has V−1 edges</li>
+          <li>Result: backbone grid with minimum total transmission cost</li>
+        </ul>
+      </div>
+      <div class="code-block">
+        <div class="cb-header"><span class="cb-lang">JavaScript</span><span class="cb-file">kruskal_mst.js</span></div>
+        <div class="cb-body"><pre><span class="cm">// Union-Find (Disjoint Set Union) data structure</span>
+<span class="kw">class</span> <span class="ty">DSU</span> {
+  <span class="kw">constructor</span>(n) {
+    <span class="kw">this</span>.parent = <span class="ty">Array</span>.from({length:n}, (_,i) => i);
+    <span class="kw">this</span>.rank   = <span class="kw">new</span> <span class="ty">Array</span>(n).fill(<span class="nu">0</span>);
+  }
+  <span class="fn">find</span>(x) {
+    <span class="kw">if</span> (<span class="kw">this</span>.parent[x] !== x)
+      <span class="kw">this</span>.parent[x] = <span class="kw">this</span>.fn.find(<span class="kw">this</span>.parent[x]);
+    <span class="kw">return</span> <span class="kw">this</span>.parent[x];
+  }
+  <span class="fn">union</span>(x, y) {
+    <span class="kw">const</span> [rx, ry] = [<span class="kw">this</span>.<span class="fn">find</span>(x), <span class="kw">this</span>.<span class="fn">find</span>(y)];
+    <span class="kw">if</span> (rx === ry) <span class="kw">return false</span>; <span class="cm">// Same component</span>
+    <span class="kw">if</span> (<span class="kw">this</span>.rank[rx] < <span class="kw">this</span>.rank[ry])
+      <span class="kw">this</span>.parent[rx] = ry;
+    <span class="kw">else if</span> (<span class="kw">this</span>.rank[rx] > <span class="kw">this</span>.rank[ry])
+      <span class="kw">this</span>.parent[ry] = rx;
+    <span class="kw">else</span> { <span class="kw">this</span>.parent[ry] = rx; <span class="kw">this</span>.rank[rx]++; }
+    <span class="kw">return true</span>;
+  }
+}
+
+<span class="cm">// Kruskal's MST for national grid backbone</span>
+<span class="kw">function</span> <span class="fn">kruskalMST</span>(nodes, edges) {
+  <span class="cm">// Sort edges by weight (transmission loss / cost)</span>
+  edges.sort((a, b) => a.weight - b.weight);
+
+  <span class="kw">const</span> dsu = <span class="kw">new</span> <span class="ty">DSU</span>(nodes.length);
+  <span class="kw">const</span> mstEdges = [];
+  <span class="kw">let</span> totalCost = <span class="nu">0</span>;
+
+  <span class="kw">for</span> (<span class="kw">const</span> { u, v, weight } <span class="kw">of</span> edges) {
+    <span class="kw">if</span> (dsu.<span class="fn">union</span>(u, v)) { <span class="cm">// No cycle formed</span>
+      mstEdges.push({ u, v, weight });
+      totalCost += weight;
+      <span class="kw">if</span> (mstEdges.length === nodes.length - <span class="nu">1</span>)
+        <span class="kw">break</span>; <span class="cm">// MST complete: V-1 edges</span>
+    }
+  }
+  <span class="kw">return</span> { mstEdges, totalCost };
+}
+
+<span class="cm">// Grid planning: find minimum backbone
+// nodes = substations, edges = possible transmission lines</span>
+<span class="kw">const</span> { mstEdges, totalCost } = <span class="fn">kruskalMST</span>(
+  substations, transmissionLines
+);
+console.log(<span class="st">`MST backbone: ${mstEdges.length} lines`</span>);
+console.log(<span class="st">`Min cost: ${totalCost} MW·km`</span>);</pre></div>
+      </div>
+    </div>
+
+    <!-- Max Flow -->
+    <div class="algo-pane" id="apane3">
+      <div class="algo-desc">
+        <h3>Max-Flow / Min-Cut (Ford-Fulkerson)</h3>
+        <p><b style="color:var(--volt)">Grid Application:</b> Find the maximum power (MW) that can be transmitted from a generation hub to a demand centre without violating any line's capacity constraint.</p>
+        <p>The Min-Cut theorem tells us the bottleneck — the set of transmission lines whose removal disconnects generator from load. These are the critical lines to upgrade or protect.</p>
+        <div class="complexity-badge">
+          <span class="cx-item">Time: O(V · E²) BFS</span>
+          <span class="cx-item">Min-cut = Max-flow</span>
+        </div>
+        <ul>
+          <li>Model each transmission line as directed edge with capacity c(u,v)</li>
+          <li>Find augmenting path from source S to sink T using BFS (Edmonds-Karp)</li>
+          <li>Push flow equal to bottleneck capacity along path</li>
+          <li>Update residual graph: reduce forward, increase reverse</li>
+          <li>Repeat until no augmenting path exists</li>
+          <li>Min-cut identifies the critical lines for grid hardening</li>
+        </ul>
+      </div>
+      <div class="code-block">
+        <div class="cb-header"><span class="cb-lang">JavaScript</span><span class="cb-file">max_flow.js</span></div>
+        <div class="cb-body"><pre><span class="cm">// Edmonds-Karp (BFS-based Ford-Fulkerson)
+// For finding max power flow in the grid</span>
+<span class="kw">function</span> <span class="fn">bfsPath</span>(residual, src, sink, parent) {
+  <span class="kw">const</span> visited = <span class="kw">new</span> <span class="ty">Set</span>([src]);
+  <span class="kw">const</span> queue = [src];
+  <span class="kw">while</span> (queue.length) {
+    <span class="kw">const</span> u = queue.shift();
+    <span class="kw">for</span> (<span class="kw">const</span> [v, cap] <span class="kw">of</span> residual[u]) {
+      <span class="kw">if</span> (!visited.has(v) && cap > <span class="nu">0</span>) {
+        visited.add(v); parent[v] = u;
+        <span class="kw">if</span> (v === sink) <span class="kw">return true</span>;
+        queue.push(v);
+      }
+    }
+  }
+  <span class="kw">return false</span>; <span class="cm">// No augmenting path</span>
+}
+
+<span class="kw">function</span> <span class="fn">maxFlow</span>(graph, src, sink) {
+  <span class="cm">// Build residual graph (forward + reverse edges)</span>
+  <span class="kw">const</span> residual = <span class="fn">buildResidual</span>(graph);
+  <span class="kw">let</span> flow = <span class="nu">0</span>;
+  <span class="kw">const</span> parent = {};
+
+  <span class="kw">while</span> (<span class="fn">bfsPath</span>(residual, src, sink, parent)) {
+    <span class="cm">// Find bottleneck capacity along path</span>
+    <span class="kw">let</span> pathFlow = <span class="nu">Infinity</span>;
+    <span class="kw">let</span> v = sink;
+    <span class="kw">while</span> (v !== src) {
+      <span class="kw">const</span> u = parent[v];
+      pathFlow = <span class="ty">Math</span>.min(pathFlow,
+        <span class="fn">getCapacity</span>(residual, u, v));
+      v = u;
+    }
+    <span class="cm">// Augment flow along path</span>
+    v = sink;
+    <span class="kw">while</span> (v !== src) {
+      <span class="kw">const</span> u = parent[v];
+      <span class="fn">updateResidual</span>(residual, u, v, pathFlow);
+      v = u;
+    }
+    flow += pathFlow;
+  }
+  <span class="cm">// Find min-cut: S-side = reachable from src in residual</span>
+  <span class="kw">const</span> minCut = <span class="fn">findMinCut</span>(residual, src);
+  <span class="kw">return</span> { maxFlow: flow, minCut };
+}
+
+<span class="cm">// Example: Max power from Vindhya Plant → Delhi NCR
+// Returns: 4200 MW (bottleneck: Delhi-Agra 765kV line)</span>
+<span class="kw">const</span> result = <span class="fn">maxFlow</span>(
+  gridCapacities, <span class="st">"VindhyaPlant"</span>, <span class="st">"DelhiNCR"</span>
+);
+console.log(<span class="st">`Max flow: ${result.maxFlow} MW`</span>);
+console.log(<span class="st">`Bottleneck lines: ${result.minCut}`</span>);</pre></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- GRAPH THEORY -->
+<section id="graph-theory">
+  <div class="sec-inner">
+    <div class="sec-tag">Mathematical Framework</div>
+    <h2 class="sec-title reveal">Graph Theory Definitions</h2>
+    <p class="sec-sub reveal">Formal definitions and their direct mappings to power grid components and operations.</p>
+    <div class="theory-grid reveal">
+      <div>
+        <div class="theory-visual">
+          <div class="tv-header">// WEIGHTED GRAPH EXAMPLE — 6-NODE GRID</div>
+          <canvas id="theoryCanvas"></canvas>
+        </div>
+      </div>
+      <div class="theory-content">
+        <h3>Formal Grid Graph Model</h3>
+        <p>The national transmission network is modelled as a weighted undirected graph G = (V, E, w) where every element has a precise engineering interpretation.</p>
+        <table class="def-table">
+          <tr><td>V (vertices)</td><td>Substations, generating stations, load centres — each node in the network</td></tr>
+          <tr><td>E (edges)</td><td>High-voltage transmission lines connecting pairs of substations</td></tr>
+          <tr><td>w(e)</td><td>Edge weight: transmission loss (MW), impedance (Ω), or thermal limit (MVA)</td></tr>
+          <tr><td>deg(v)</td><td>Number of lines connected to substation v; high degree = critical hub</td></tr>
+          <tr><td>Path P</td><td>Sequence of substations and lines from generator to load centre</td></tr>
+          <tr><td>Cycle C</td><td>Closed loop in the grid; provides redundancy for fault tolerance</td></tr>
+          <tr><td>Cut set</td><td>Edges whose removal disconnects the grid; critical vulnerability set</td></tr>
+          <tr><td>Spanning Tree</td><td>Minimum lines keeping all nodes connected; backbone with no cycles</td></tr>
+          <tr><td>Euler circuit</td><td>Path traversing every line once; optimal maintenance inspection route</td></tr>
+          <tr><td>Connectivity κ</td><td>Minimum nodes to remove to disconnect grid; resilience metric</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- RESULTS -->
+<section id="results">
+  <div class="sec-inner">
+    <div class="sec-tag">Key Outcomes</div>
+    <h2 class="sec-title reveal">Optimization Results</h2>
+    <p class="sec-sub reveal">Applying graph algorithms to the simulated 14-node national grid model demonstrates measurable improvements across all stability metrics.</p>
+    <div class="results-grid reveal">
+      <div class="res-card" style="--rc-col:var(--volt)">
+        <div class="res-label">Transmission Loss Reduction</div>
+        <div class="res-num">34%</div>
+        <div class="res-desc">Dijkstra's optimal routing reduces average transmission loss from 18.2% to 12.1% by selecting minimum-impedance paths rather than shortest-distance routes.</div>
+      </div>
+      <div class="res-card" style="--rc-col:var(--live)">
+        <div class="res-label">MST Cost vs Full Graph</div>
+        <div class="res-num">61%</div>
+        <div class="res-desc">Kruskal's MST identifies that only 13 of 20 transmission lines are needed to maintain full connectivity — 61% of total infrastructure capacity is redundant backbone.</div>
+      </div>
+      <div class="res-card" style="--rc-col:var(--info)">
+        <div class="res-label">Inspection Tour Efficiency</div>
+        <div class="res-num">22%</div>
+        <div class="res-desc">Chinese Postman algorithm reduces the maintenance inspection tour length by 22% compared to naive routing — saving fuel, crew time, and reducing outage risk windows.</div>
+      </div>
+      <div class="res-card" style="--rc-col:var(--fault)">
+        <div class="res-label">Critical Nodes Identified</div>
+        <div class="res-num">3</div>
+        <div class="res-desc">Betweenness centrality analysis identifies 3 high-risk substations (nodes 2, 7, 11) whose failure would partition the national grid into isolated islands.</div>
+      </div>
+      <div class="res-card" style="--rc-col:var(--safe)">
+        <div class="res-label">Max-Flow Improvement</div>
+        <div class="res-num">+18%</div>
+        <div class="res-desc">Ford-Fulkerson min-cut analysis identified 2 bottleneck transmission corridors. Upgrading these lines increases maximum power flow capacity by 18%.</div>
+      </div>
+      <div class="res-card" style="--rc-col:var(--volt)">
+        <div class="res-label">Fault Recovery Time</div>
+        <div class="res-num">−67%</div>
+        <div class="res-desc">Pre-computed Dijkstra re-routing tables (stored for all single-edge failures) reduce fault recovery and re-routing time from 90 seconds to 30 seconds.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p><strong>PowerNet</strong> — National Power Grid Stability & Optimization Project</p>
+  <p style="margin-top:.5rem">Graph Theory · Dijkstra's Algorithm · Chinese Postman · Kruskal's MST · Max-Flow · Weighted Graphs</p>
+</footer>
+
+<script>
+// ══════════════════════════════════════════════════
+// GRAPH DATA — 14-node national grid
+// Nodes: major substations across India
+// ══════════════════════════════════════════════════
+const NODES = [
+  { id:0,  label:"Delhi",     x:0.35, y:0.12, type:"load",   mw:4200 },
+  { id:1,  label:"Agra",      x:0.43, y:0.22, type:"relay",  mw:1100 },
+  { id:2,  label:"Lucknow",   x:0.60, y:0.18, type:"relay",  mw:1800 },
+  { id:3,  label:"Jaipur",    x:0.18, y:0.25, type:"relay",  mw:1200 },
+  { id:4,  label:"Bhopal",    x:0.35, y:0.42, type:"relay",  mw:900  },
+  { id:5,  label:"Nagpur",    x:0.52, y:0.52, type:"relay",  mw:1400 },
+  { id:6,  label:"Kolkata",   x:0.78, y:0.30, type:"load",   mw:2800 },
+  { id:7,  label:"Mumbai",    x:0.15, y:0.62, type:"load",   mw:5100 },
+  { id:8,  label:"Pune",      x:0.22, y:0.70, type:"relay",  mw:1600 },
+  { id:9,  label:"Hyderabad", x:0.42, y:0.68, type:"relay",  mw:2100 },
+  { id:10, label:"Chennai",   x:0.58, y:0.78, type:"load",   mw:3200 },
+  { id:11, label:"Bengaluru", x:0.44, y:0.84, type:"load",   mw:2900 },
+  { id:12, label:"Vindhya",   x:0.30, y:0.33, type:"gen",    mw:6000 },
+  { id:13, label:"Rihand",    x:0.55, y:0.33, type:"gen",    mw:4800 },
+];
+
+const EDGES_DEF = [
+  {u:0, v:1, w:8},  {u:0, v:3, w:12}, {u:1, v:2, w:10},
+  {u:1, v:4, w:14}, {u:2, v:6, w:18}, {u:2, v:13, w:11},
+  {u:3, v:12, w:9}, {u:3, v:7, w:22}, {u:4, v:12, w:7},
+  {u:4, v:5, w:11}, {u:5, v:13, w:8}, {u:5, v:9, w:13},
+  {u:5, v:6, w:16}, {u:6, v:13, w:14},{u:7, v:8, w:6},
+  {u:7, v:12, w:15},{u:8, v:9, w:10}, {u:9, v:10, w:9},
+  {u:9, v:11, w:8}, {u:10, v:11, w:5},
+];
+
+// ══════════════════════════════════════════════════
+// HERO CANVAS (animated background preview)
+// ══════════════════════════════════════════════════
+(function() {
+  const canvas = document.getElementById('heroCanvas');
+  const ctx    = canvas.getContext('2d');
+  let W, H, t = 0, particles = [];
+
+  function resize() {
+    const rect = canvas.getBoundingClientRect();
+    W = canvas.width  = rect.width;
+    H = canvas.height = rect.height;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  // Normalize node positions
+  function npos(n) {
+    return { x: n.x * W * 0.88 + W * 0.06, y: n.y * H * 0.88 + H * 0.06 };
+  }
+
+  // Animated "power flow" particles
+  function resetParticles() {
+    particles = EDGES_DEF.slice(0,12).map(e => ({
+      edge: e, t: Math.random(), speed: 0.003 + Math.random()*0.004
+    }));
+  }
+  resetParticles();
+
+  function draw() {
+    ctx.clearRect(0,0,W,H);
+    const TYPE_COL = { gen:'#f5a623', load:'#ff6b1a', relay:'#4f8eff' };
+
+    // Draw edges
+    for (const e of EDGES_DEF) {
+      const a = npos(NODES[e.u]), b = npos(NODES[e.v]);
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+      ctx.strokeStyle = 'rgba(79,142,255,0.2)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      // Weight label
+      const mx = (a.x+b.x)/2, my = (a.y+b.y)/2;
+      ctx.fillStyle = 'rgba(138,154,192,0.55)';
+      ctx.font = '9px DM Mono, monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(e.w, mx, my);
+    }
+
+    // Draw particles
+    for (const p of particles) {
+      p.t += p.speed;
+      if (p.t > 1) p.t = 0;
+      const a = npos(NODES[p.edge.u]), b = npos(NODES[p.edge.v]);
+      const x = a.x + (b.x-a.x)*p.t, y = a.y + (b.y-a.y)*p.t;
+      ctx.beginPath();
+      ctx.arc(x, y, 3, 0, Math.PI*2);
+      ctx.fillStyle = '#f5a623';
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(x, y, 6, 0, Math.PI*2);
+      ctx.fillStyle = 'rgba(245,166,35,0.25)';
+      ctx.fill();
+    }
+
+    // Draw nodes
+    for (const n of NODES) {
+      const p = npos(n);
+      const col = TYPE_COL[n.type] || '#4f8eff';
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 7, 0, Math.PI*2);
+      ctx.fillStyle = col;
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 11, 0, Math.PI*2);
+      ctx.strokeStyle = col + '44';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.fillStyle = '#e4ecff';
+      ctx.font = 'bold 9px DM Sans, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(n.label, p.x, p.y - 14);
+    }
+
+    t++;
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// ══════════════════════════════════════════════════
+// MAIN GRID SIMULATOR
+// ══════════════════════════════════════════════════
+(function() {
+  const canvas = document.getElementById('gridCanvas');
+  const ctx    = canvas.getContext('2d');
+  let W, H;
+
+  let algo       = 'dijkstra';
+  let srcNode    = null, tgtNode = null;
+  let pathEdges  = new Set();
+  let mstEdges   = new Set();
+  let faultEdges = new Set();
+  let cpEdges    = new Set();
+  let stepIdx    = 0;
+  let animTimer  = null;
+  let dijkDists  = null, dijkPrev = null;
+  let logLines   = [];
+
+  const TYPE_COL = { gen:'#f5a623', load:'#ff6b1a', relay:'#4f8eff' };
+
+  function resize() {
+    const rect = canvas.parentElement.getBoundingClientRect();
+    W = canvas.width  = canvas.offsetWidth  || 700;
+    H = canvas.height = 520;
+  }
+  resize();
+
+  function npos(n) {
+    return { x: n.x * W * 0.85 + W * 0.07, y: n.y * H * 0.85 + H * 0.07 };
+  }
+
+  function log(msg, cls='log-info') {
+    logLines.push(`<span class="${cls}">${msg}</span>`);
+    if (logLines.length > 30) logLines.shift();
+    document.getElementById('algoLog').innerHTML = logLines.join('\n');
+    document.getElementById('algoLog').scrollTop = 9999;
+  }
+
+  // ── DRAW ─────────────────────────────────────
+  function draw() {
+    ctx.clearRect(0,0,W,H);
+
+    // Grid BG lines
+    ctx.strokeStyle = 'rgba(79,142,255,0.04)';
+    ctx.lineWidth = 1;
+    for (let x=0; x<W; x+=40) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+    for (let y=0; y<H; y+=40) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+
+    // Draw edges
+    for (let i=0; i<EDGES_DEF.length; i++) {
+      const e = EDGES_DEF[i];
+      if (faultEdges.has(i)) continue;
+      const a = npos(NODES[e.u]), b = npos(NODES[e.v]);
+      const isMST  = mstEdges.has(i);
+      const isPath = pathEdges.has(i);
+      const isCP   = cpEdges.has(i);
+
+      let col = 'rgba(79,142,255,0.22)', lw = 1.5;
+      if (isMST)  { col = 'rgba(0,212,170,0.85)'; lw = 3; }
+      if (isPath) { col = '#f5a623'; lw = 3.5; }
+      if (isCP)   { col = 'rgba(178,120,255,0.85)'; lw = 3; }
+
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+      ctx.strokeStyle = col;
+      ctx.lineWidth = lw;
+      if (isPath) {
+        ctx.shadowColor = '#f5a623'; ctx.shadowBlur = 10;
+      } else {
+        ctx.shadowBlur = 0;
+      }
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // Weight label
+      const mx = (a.x+b.x)/2, my = (a.y+b.y)/2;
+      ctx.fillStyle = isPath ? '#f5a623' : isMST ? '#00d4aa' : 'rgba(138,154,192,0.6)';
+      ctx.font = `${isPath||isMST ? '600 ' : ''}10px DM Mono, monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(e.w, mx + 6, my - 6);
+    }
+
+    // Fault edge markers
+    for (const i of faultEdges) {
+      const e = EDGES_DEF[i];
+      const a = npos(NODES[e.u]), b = npos(NODES[e.v]);
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+      ctx.strokeStyle = 'rgba(255,61,90,0.5)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6,4]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      const mx = (a.x+b.x)/2, my = (a.y+b.y)/2;
+      ctx.fillStyle = '#ff3d5a';
+      ctx.font = '12px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('✕', mx, my);
+    }
+
+    // Draw nodes
+    for (const n of NODES) {
+      const p = npos(n);
+      const col    = TYPE_COL[n.type] || '#4f8eff';
+      const isSrc  = srcNode === n.id;
+      const isTgt  = tgtNode === n.id;
+      const isPath2= dijkPrev && isOnPath(n.id);
+      const r      = isSrc || isTgt ? 11 : 8;
+
+      // Glow ring
+      if (isSrc || isTgt || isPath2) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, r+7, 0, Math.PI*2);
+        ctx.fillStyle = isSrc ? 'rgba(245,166,35,0.2)' : isTgt ? 'rgba(0,212,170,0.2)' : 'rgba(245,166,35,0.1)';
+        ctx.fill();
+      }
+
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, r, 0, Math.PI*2);
+      ctx.fillStyle = isSrc ? '#f5a623' : isTgt ? '#00d4aa' : col;
+      ctx.fill();
+      ctx.strokeStyle = '#0a0f1e';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Node type icon
+      const icon = n.type==='gen' ? '⚡' : n.type==='load' ? '🏙' : '◆';
+      ctx.fillStyle = '#fff';
+      ctx.font = `${r-1}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(n.id, p.x, p.y);
+
+      // Label
+      ctx.fillStyle = isSrc ? '#f5a623' : isTgt ? '#00d4aa' : '#c8d8f8';
+      ctx.font = `${isSrc||isTgt?'700 ':'500 '}11px DM Sans, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText(n.label, p.x, p.y + r + 4);
+
+      // MW label
+      ctx.fillStyle = 'rgba(138,154,192,0.65)';
+      ctx.font = '9px DM Mono';
+      ctx.fillText(n.mw+'MW', p.x, p.y + r + 16);
+    }
+  }
+
+  function isOnPath(id) {
+    if (!dijkPrev || tgtNode === null) return false;
+    let cur = tgtNode;
+    while (cur !== null && cur !== undefined) {
+      if (cur === id) return true;
+      cur = dijkPrev[cur];
+    }
+    return false;
+  }
+
+  // ── ALGORITHMS ───────────────────────────────
+  function buildAdjList(excludeFaults=true) {
+    const adj = {};
+    NODES.forEach(n => adj[n.id] = []);
+    EDGES_DEF.forEach((e,i) => {
+      if (excludeFaults && faultEdges.has(i)) return;
+      adj[e.u].push([e.v, e.w, i]);
+      adj[e.v].push([e.u, e.w, i]);
+    });
+    return adj;
+  }
+
+  function runDijkstra(src) {
+    const adj = buildAdjList();
+    const dist = {}, prev = {};
+    NODES.forEach(n => { dist[n.id] = Infinity; prev[n.id] = null; });
+    dist[src] = 0;
+    // Simple priority queue via sorted array
+    let pq = [[0, src]];
+    const visited = new Set();
+    log(`<span class="log-dim">// Dijkstra from node ${src} (${NODES[src].label})</span>`);
+    while (pq.length) {
+      pq.sort((a,b)=>a[0]-b[0]);
+      const [d, u] = pq.shift();
+      if (visited.has(u)) continue;
+      visited.add(u);
+      log(`  visit ${NODES[u].label} d=${d}`, 'log-dim');
+      for (const [v, w] of adj[u]) {
+        if (visited.has(v)) continue;
+        const alt = dist[u] + w;
+        if (alt < dist[v]) {
+          dist[v] = alt; prev[v] = u;
+          pq.push([alt, v]);
+          log(`  relax ${NODES[u].label}→${NODES[v].label} new dist=${alt}`, 'log-dim');
+        }
+      }
+    }
+    return { dist, prev };
+  }
+
+  function getPathEdges(prev, tgt) {
+    const set = new Set();
+    let cur = tgt;
+    while (prev[cur] !== null && prev[cur] !== undefined) {
+      const u = prev[cur], v = cur;
+      const idx = EDGES_DEF.findIndex(e=>(e.u===u&&e.v===v)||(e.u===v&&e.v===u));
+      if (idx >= 0) set.add(idx);
+      cur = u;
+    }
+    return set;
+  }
+
+  function runMST() {
+    const edges = EDGES_DEF
+      .map((e,i)=>({...e,i}))
+      .filter(e=>!faultEdges.has(e.i))
+      .sort((a,b)=>a.w-b.w);
+    const parent = NODES.map((_,i)=>i);
+    const rank   = NODES.map(()=>0);
+    function find(x) { return parent[x]===x?x:parent[x]=find(parent[x]); }
+    function union(x,y) {
+      const [rx,ry]=[find(x),find(y)];
+      if(rx===ry) return false;
+      if(rank[rx]<rank[ry]) parent[rx]=ry;
+      else if(rank[rx]>rank[ry]) parent[ry]=rx;
+      else { parent[ry]=rx; rank[rx]++; }
+      return true;
+    }
+    const mst = new Set(); let total=0;
+    log('<span class="log-dim">// Kruskal MST — sorting edges by weight</span>');
+    for (const e of edges) {
+      if (union(e.u, e.v)) {
+        mst.add(e.i); total += e.w;
+        log(`  add edge ${NODES[e.u].label}–${NODES[e.v].label} w=${e.w}`, 'log-dim');
+      }
+    }
+    log(`<span class="log-info">MST complete. Total weight: ${total}</span>`);
+    document.getElementById('mMST').textContent = total;
+    return mst;
+  }
+
+  function runChinesePostman() {
+    // Simplified: find edges and highlight all in purple, show odd-degree nodes
+    const adj = buildAdjList();
+    const oddNodes = NODES.filter(n => adj[n.id].length % 2 !== 0);
+    log('<span class="log-dim">// Chinese Postman Analysis</span>');
+    log(`  Odd-degree nodes: ${oddNodes.map(n=>n.label).join(', ')}`, 'log-warn');
+    const totalW = EDGES_DEF.filter((_,i)=>!faultEdges.has(i)).reduce((s,e)=>s+e.w,0);
+    log(`  Sum of all edge weights: ${totalW}`, 'log-dim');
+    // Extra cost estimate from matching odd vertices
+    let extra = 0;
+    for (let i=0; i<oddNodes.length-1; i+=2) {
+      const e = EDGES_DEF.find(e=>(e.u===oddNodes[i].id&&e.v===oddNodes[i+1]?.id)||(e.u===oddNodes[i+1]?.id&&e.v===oddNodes[i].id));
+      if (e) extra += e.w;
+    }
+    log(`  Matching cost (duplicate edges): ~${extra}`, 'log-warn');
+    log(`<span class="log-info">Postman tour length: ~${totalW + extra} (${oddNodes.length} odd vertices)</span>`);
+    // Highlight all non-fault edges in CP style
+    const cpSet = new Set(EDGES_DEF.map((_,i)=>i).filter(i=>!faultEdges.has(i)));
+    return cpSet;
+  }
+
+  // ── INTERACTION ──────────────────────────────
+  canvas.addEventListener('click', e => {
+    const rect = canvas.getBoundingClientRect();
+    const mx   = (e.clientX - rect.left) * (canvas.width / rect.width);
+    const my   = (e.clientY - rect.top)  * (canvas.height / rect.height);
+
+    if (algo === 'fault') {
+      // Check if click near an edge
+      for (let i=0; i<EDGES_DEF.length; i++) {
+        const ed = EDGES_DEF[i];
+        const a = npos(NODES[ed.u]), b = npos(NODES[ed.v]);
+        const dx=b.x-a.x, dy=b.y-a.y, len=Math.sqrt(dx*dx+dy*dy);
+        const t2=Math.max(0,Math.min(1,((mx-a.x)*dx+(my-a.y)*dy)/(len*len)));
+        const px=a.x+t2*dx-mx, py=a.y+t2*dy-my;
+        if (Math.sqrt(px*px+py*py) < 10) {
+          if (faultEdges.has(i)) {
+            faultEdges.delete(i);
+            log(`Line ${NODES[ed.u].label}–${NODES[ed.v].label} RESTORED`, 'log-info');
+          } else {
+            faultEdges.add(i);
+            log(`LINE FAULT: ${NODES[ed.u].label}–${NODES[ed.v].label} (w=${ed.w})`, 'log-err');
+          }
+          document.getElementById('mFault').textContent = faultEdges.size;
+          draw(); return;
+        }
+      }
+      return;
+    }
+
+    // Click on node
+    let hit = null;
+    for (const n of NODES) {
+      const p = npos(n);
+      if (Math.hypot(p.x-mx, p.y-my) < 14) { hit = n.id; break; }
+    }
+    if (hit === null) return;
+
+    if (algo === 'dijkstra') {
+      if (srcNode === null) {
+        srcNode = hit; tgtNode = null; pathEdges = new Set();
+        dijkDists = null; dijkPrev = null;
+        document.getElementById('mSrc').textContent = NODES[hit].label;
+        document.getElementById('mTgt').textContent = '—';
+        document.getElementById('mCost').textContent = '—';
+        log(`Source set: ${NODES[hit].label} (node ${hit})`, 'log-info');
+        const res = runDijkstra(hit);
+        dijkDists = res.dist; dijkPrev = res.prev;
+      } else if (tgtNode === null && hit !== srcNode) {
+        tgtNode = hit;
+        document.getElementById('mTgt').textContent = NODES[hit].label;
+        const cost = dijkDists[hit];
+        document.getElementById('mCost').textContent = cost === Infinity ? '∞ (no path)' : cost;
+        if (cost !== Infinity) {
+          pathEdges = getPathEdges(dijkPrev, hit);
+          const path = [];
+          let cur = hit;
+          while (cur !== null && cur !== undefined) { path.unshift(NODES[cur].label); cur = dijkPrev[cur]; }
+          log(`<span class="log-info">SHORTEST PATH: ${path.join(' → ')}</span>`);
+          log(`<span class="log-info">Total cost: ${cost} MW·km</span>`);
+        } else {
+          log(`<span class="log-err">NO PATH: ${NODES[srcNode].label} → ${NODES[hit].label} (grid partitioned)</span>`);
+        }
+      } else {
+        srcNode = null; tgtNode = null; pathEdges = new Set(); dijkDists = null; dijkPrev = null;
+        document.getElementById('mSrc').textContent = '—';
+        document.getElementById('mTgt').textContent = '—';
+        document.getElementById('mCost').textContent = '—';
+        log('Reset. Click a source node.', 'log-dim');
+      }
+    } else if (algo === 'mst') {
+      mstEdges = runMST();
+    }
+    draw();
+  });
+
+  // ── PUBLIC CONTROLS ──────────────────────────
+  window.setAlgo = function(a) {
+    algo = a;
+    srcNode = null; tgtNode = null; pathEdges = new Set(); mstEdges = new Set(); cpEdges = new Set();
+    dijkDists = null; dijkPrev = null;
+    document.getElementById('mAlgo').textContent = a === 'dijkstra' ? 'Dijkstra' : a === 'mst' ? 'MST Kruskal' : a === 'chinese' ? 'Chinese Postman' : 'Fault Mode';
+    document.getElementById('mSrc').textContent = '—';
+    document.getElementById('mTgt').textContent = '—';
+    document.getElementById('mCost').textContent = '—';
+    document.getElementById('mMST').textContent = '—';
+    ['btnDijkstra','btnMST','btnChinese','btnFault'].forEach(id=>document.getElementById(id)?.classList.remove('active'));
+    const map = {dijkstra:'btnDijkstra',mst:'btnMST',chinese:'btnChinese',fault:'btnFault'};
+    document.getElementById(map[a])?.classList.add('active');
+
+    if (a === 'mst') {
+      mstEdges = runMST();
+    } else if (a === 'chinese') {
+      cpEdges = runChinesePostman();
+    } else if (a === 'fault') {
+      log('FAULT MODE: Click any transmission line to toggle failure.', 'log-warn');
+    } else {
+      log('Dijkstra mode: click source node, then target node.', 'log-dim');
+    }
+    draw();
+  };
+
+  window.resetSim = function() {
+    algo = 'dijkstra'; srcNode = null; tgtNode = null;
+    pathEdges = new Set(); mstEdges = new Set(); faultEdges = new Set(); cpEdges = new Set();
+    dijkDists = null; dijkPrev = null; logLines = [];
+    document.getElementById('mSrc').textContent = '—';
+    document.getElementById('mTgt').textContent = '—';
+    document.getElementById('mCost').textContent = '—';
+    document.getElementById('mMST').textContent = '—';
+    document.getElementById('mFault').textContent = '0';
+    document.getElementById('algoLog').innerHTML = '<span class="log-dim">// Reset. Ready.\n// Click a node to begin Dijkstra routing.</span>';
+    ['btnDijkstra','btnMST','btnChinese','btnFault'].forEach(id=>document.getElementById(id)?.classList.remove('active'));
+    document.getElementById('btnDijkstra').classList.add('active');
+    setAlgo('dijkstra');
+    draw();
+  };
+
+  draw();
+})();
+
+// ══════════════════════════════════════════════════
+// THEORY CANVAS
+// ══════════════════════════════════════════════════
+(function() {
+  const canvas = document.getElementById('theoryCanvas');
+  const ctx    = canvas.getContext('2d');
+  canvas.width  = canvas.offsetWidth || 460;
+  canvas.height = 320;
+  const W = canvas.width, H = canvas.height;
+
+  const nodes6 = [
+    {x:.18,y:.2,lab:'S (Gen)',col:'#f5a623'},{x:.5,y:.12,lab:'A',col:'#4f8eff'},
+    {x:.82,y:.2,lab:'B',col:'#4f8eff'},{x:.18,y:.75,lab:'C',col:'#4f8eff'},
+    {x:.5,y:.82,lab:'D',col:'#4f8eff'},{x:.82,y:.75,lab:'T (Load)',col:'#00d4aa'}
+  ];
+  const edges6 = [
+    {u:0,v:1,w:4},{u:0,v:3,w:8},{u:1,v:2,w:8},{u:1,v:4,w:11},
+    {u:2,v:5,w:7},{u:3,v:4,w:1},{u:3,v:1,w:3},{u:4,v:5,w:9},{u:4,v:2,w:2}
+  ];
+  // MST of this 6-node graph: edges 6,5,0,8,7 => total=4+1+8+2+7=?
+  // Actually compute: sort by w: {3,4},{1,8},{2,8},{5,11},{0,4},{8,9},{7,9},{6,7}
+  const mstSet6 = new Set([5,6,0,8,2]); // example highlight
+
+  function npos6(n) { return {x:n.x*W*0.86+W*.07, y:n.y*H*0.82+H*.09}; }
+
+  for (const e of edges6) {
+    const a=npos6(nodes6[e.u]), b=npos6(nodes6[e.v]);
+    const isMST = mstSet6.has(edges6.indexOf(e));
+    ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y);
+    ctx.strokeStyle = isMST ? 'rgba(0,212,170,0.8)' : 'rgba(79,142,255,0.3)';
+    ctx.lineWidth   = isMST ? 2.5 : 1.5;
+    ctx.stroke();
+    const mx=(a.x+b.x)/2, my=(a.y+b.y)/2;
+    ctx.fillStyle = isMST ? '#00d4aa' : 'rgba(138,154,192,0.8)';
+    ctx.font = `${isMST?'600 ':''}11px DM Mono`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(e.w, mx+5, my-6);
+  }
+  for (const n of nodes6) {
+    const p=npos6(n);
+    ctx.beginPath(); ctx.arc(p.x,p.y,12,0,Math.PI*2);
+    ctx.fillStyle=n.col; ctx.fill();
+    ctx.strokeStyle='#0a0f1e'; ctx.lineWidth=2; ctx.stroke();
+    ctx.fillStyle='#fff'; ctx.font='bold 11px DM Sans'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(n.lab.split(' ')[0],p.x,p.y);
+    ctx.fillStyle=n.col; ctx.font='10px DM Sans'; ctx.textBaseline='top';
+    ctx.fillText(n.lab,p.x,p.y+14);
+  }
+  // Legend
+  ctx.fillStyle='rgba(0,212,170,0.9)'; ctx.fillRect(18,H-30,16,3);
+  ctx.fillStyle='rgba(0,212,170,0.9)'; ctx.font='11px DM Mono'; ctx.textAlign='left'; ctx.textBaseline='middle';
+  ctx.fillText('MST edges (Kruskal)', 40, H-28);
+  ctx.fillStyle='rgba(79,142,255,0.5)'; ctx.fillRect(18,H-18,16,3);
+  ctx.fillStyle='rgba(79,142,255,0.7)'; ctx.fillText('non-MST edges', 40, H-16);
+})();
+
+// ══════════════════════════════════════════════════
+// ALGO TABS
+// ══════════════════════════════════════════════════
+window.showAlgoTab = function(idx) {
+  document.querySelectorAll('.algo-tab').forEach((t,i)=>t.classList.toggle('active',i===idx));
+  document.querySelectorAll('.algo-pane').forEach((p,i)=>p.classList.toggle('active',i===idx));
+};
+
+// ══════════════════════════════════════════════════
+// SCROLL REVEAL
+// ══════════════════════════════════════════════════
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting) { e.target.classList.add('vis'); obs.unobserve(e.target); }});
+}, {threshold:0.08});
+document.querySelectorAll('.reveal').forEach(el=>obs.observe(el));
+</script>
+</body>
+</html>

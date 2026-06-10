@@ -1,0 +1,1650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VoteForge — Voting System Analysis</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Cormorant+SC:wght@400;600;700&family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ══════════════════════════════════════════════════
+   VOTEFORGE  ·  Premium Dark Editorial Theme
+   Charcoal × Gold × Cream
+   ══════════════════════════════════════════════════ */
+:root {
+  /* Backgrounds — layered depth */
+  --bg:        #0f0f0e;
+  --bg2:       #141412;
+  --bg3:       #1a1916;
+  --bg4:       #201f1b;
+  --surface:   #1c1b18;
+  --surface2:  #232118;
+
+  /* Borders */
+  --border:    rgba(212,185,120,0.12);
+  --border2:   rgba(212,185,120,0.28);
+  --border3:   rgba(212,185,120,0.50);
+
+  /* Gold spectrum — primary accent */
+  --gold:      #d4b978;
+  --gold2:     #e8cf96;
+  --gold3:     #c0a055;
+  --gold-dim:  rgba(212,185,120,0.10);
+  --gold-mid:  rgba(212,185,120,0.20);
+
+  /* Cream — text */
+  --cream:     #f2ead8;
+  --cream2:    #d8ceb4;
+
+  /* Secondary accents */
+  --copper:    #c07848;
+  --copper-dim:rgba(192,120,72,0.12);
+  --sage:      #7a9e7e;
+  --sage-dim:  rgba(122,158,126,0.10);
+  --crimson:   #c04848;
+  --crimson-dim:rgba(192,72,72,0.12);
+  --slate:     #8888aa;
+
+  /* Text */
+  --ink:       #f2ead8;
+  --muted:     #8a826a;
+  --muted2:    #5a5448;
+
+  /* Typography */
+  --serif:     'Cormorant Garamond', 'Georgia', serif;
+  --serif-sc:  'Cormorant SC', 'Georgia', serif;
+  --mono:      'JetBrains Mono', 'Courier New', monospace;
+
+  /* Shadows */
+  --shadow-sm: 0 2px 12px rgba(0,0,0,0.35);
+  --shadow-md: 0 8px 32px rgba(0,0,0,0.45);
+  --shadow-lg: 0 20px 60px rgba(0,0,0,0.55);
+  --glow-gold: 0 0 40px rgba(212,185,120,0.08);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--cream);font-family:var(--mono);font-size:14px;line-height:1.7;overflow-x:hidden}
+
+/* ── Noise grain overlay ── */
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  background-size:200px 200px;
+  opacity:0.55;
+}
+
+/* ── Cinematic ambient glow ── */
+body::after{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(ellipse 900px 600px at 15% 10%, rgba(212,185,120,0.04) 0%,transparent 65%),
+    radial-gradient(ellipse 700px 500px at 88% 85%, rgba(192,120,72,0.03) 0%,transparent 60%),
+    radial-gradient(ellipse 500px 400px at 50% 50%, rgba(122,158,126,0.02) 0%,transparent 70%);
+}
+
+/* ── NAV ── */
+nav{position:sticky;top:0;z-index:200;display:flex;align-items:center;justify-content:space-between;
+  padding:0 2.5rem;height:64px;
+  background:rgba(10,10,9,0.88);
+  backdrop-filter:blur(24px) saturate(180%);
+  border-bottom:1px solid var(--border);
+  box-shadow:0 1px 0 rgba(212,185,120,0.06)}
+.nav-logo{font-family:var(--serif-sc);font-size:20px;font-weight:700;letter-spacing:0.06em;
+  color:var(--gold);display:flex;align-items:center;gap:12px}
+.logo-mark{width:36px;height:36px;
+  background:linear-gradient(135deg,var(--gold3),var(--copper));
+  border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:17px;
+  box-shadow:0 0 20px rgba(212,185,120,0.20),inset 0 1px 0 rgba(255,255,255,0.1)}
+.nav-links{display:flex;gap:2.5rem}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:11px;letter-spacing:0.12em;
+  text-transform:uppercase;transition:color .25s;font-weight:500}
+.nav-links a:hover{color:var(--gold)}
+.nav-pill{font-size:10px;padding:5px 16px;border:1px solid var(--border2);border-radius:20px;
+  color:var(--gold3);letter-spacing:0.1em;text-transform:uppercase;background:var(--gold-dim);
+  font-weight:600}
+
+/* ── HERO ── */
+.hero{position:relative;z-index:1;padding:7rem 2.5rem 5rem;max-width:1300px;margin:0 auto;
+  display:grid;grid-template-columns:1fr 1fr;gap:4rem;align-items:center;min-height:90vh}
+
+/* Decorative gold rule across hero */
+.hero::after{content:'';position:absolute;bottom:0;left:2.5rem;right:2.5rem;height:1px;
+  background:linear-gradient(90deg,transparent,var(--border2),transparent)}
+
+.hero-eyebrow{font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:var(--gold3);
+  display:flex;align-items:center;gap:12px;margin-bottom:1.75rem;font-weight:600}
+.hero-eyebrow::before{content:'';width:40px;height:1px;
+  background:linear-gradient(90deg,var(--gold3),transparent)}
+
+.hero h1{font-family:var(--serif);font-size:clamp(3.2rem,5.5vw,5.8rem);font-weight:600;
+  line-height:0.95;letter-spacing:-0.01em;margin-bottom:1.75rem;color:var(--cream)}
+.hero h1 .hl-gold{color:var(--gold);font-style:italic}
+.hero h1 .hl-copper{color:var(--copper);font-style:normal;font-weight:700}
+
+.hero-sub{font-size:14px;color:var(--muted);line-height:2;max-width:440px;margin-bottom:2.5rem;
+  letter-spacing:0.01em}
+
+.chip-row{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:2.5rem}
+.chip{font-size:10px;padding:4px 12px;border-radius:3px;letter-spacing:0.08em;font-weight:600;
+  text-transform:uppercase;border:1px solid}
+.chip-o{background:var(--gold-dim);color:var(--gold2);border-color:rgba(212,185,120,0.20)}
+.chip-t{background:var(--sage-dim);color:var(--sage);border-color:rgba(122,158,126,0.20)}
+.chip-c{background:var(--copper-dim);color:var(--copper);border-color:rgba(192,120,72,0.20)}
+
+.btn-primary{display:inline-flex;align-items:center;gap:10px;padding:14px 32px;
+  background:linear-gradient(135deg,var(--gold),var(--gold3));
+  color:#0f0f0e;border:none;border-radius:4px;
+  font-family:var(--mono);font-size:13px;font-weight:700;cursor:pointer;
+  transition:all .25s;letter-spacing:0.04em;text-transform:uppercase;
+  box-shadow:0 4px 20px rgba(212,185,120,0.25)}
+.btn-primary:hover{filter:brightness(1.12);transform:translateY(-2px);
+  box-shadow:0 12px 36px rgba(212,185,120,0.35)}
+
+.btn-outline{display:inline-flex;align-items:center;gap:10px;padding:14px 28px;
+  background:transparent;color:var(--cream2);border:1px solid var(--border2);border-radius:4px;
+  font-family:var(--mono);font-size:13px;font-weight:500;cursor:pointer;transition:all .25s;
+  margin-left:12px;letter-spacing:0.03em}
+.btn-outline:hover{background:var(--gold-dim);color:var(--gold);border-color:var(--border3)}
+
+/* Hero badge */
+.hero-right{position:relative;display:flex;justify-content:center;align-items:center}
+.hero-badge{width:280px;height:280px;border-radius:50%;
+  border:1px solid var(--border2);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:radial-gradient(circle,rgba(212,185,120,0.06) 0%,transparent 70%);
+  animation:rotateSlow 28s linear infinite;position:relative;
+  box-shadow:var(--shadow-md),0 0 60px rgba(212,185,120,0.05)}
+.hero-badge-inner{animation:rotateSlow 28s linear infinite reverse;text-align:center}
+.hero-badge .big{font-family:var(--serif);font-size:64px;font-weight:600;
+  color:var(--gold);line-height:1;display:block;text-shadow:0 0 30px rgba(212,185,120,0.4)}
+.hero-badge .sm{font-size:10px;color:var(--muted);letter-spacing:0.14em;text-transform:uppercase;
+  font-weight:600}
+.hero-badge-ring{position:absolute;inset:-22px;border-radius:50%;
+  border:1px dashed rgba(212,185,120,0.15)}
+.hero-badge-ring2{position:absolute;inset:-46px;border-radius:50%;
+  border:1px dashed rgba(192,120,72,0.08)}
+.orbit-dot{position:absolute;width:8px;height:8px;
+  background:var(--gold);border-radius:50%;
+  top:50%;left:50%;animation:orbit 9s linear infinite;
+  box-shadow:0 0 12px rgba(212,185,120,0.7)}
+.orbit-dot:nth-child(2){background:var(--copper);animation-duration:14s;animation-delay:-6s;
+  width:6px;height:6px;box-shadow:0 0 10px rgba(192,120,72,0.7)}
+@keyframes orbit{
+  0%{transform:rotate(0deg) translateX(142px) rotate(0deg)}
+  100%{transform:rotate(360deg) translateX(142px) rotate(-360deg)}}
+@keyframes rotateSlow{to{transform:rotate(360deg)}}
+
+/* ── SECTION SHELL ── */
+section{position:relative;z-index:1;padding:5rem 2.5rem}
+.inner{max-width:1300px;margin:0 auto}
+.sec-tag{font-size:10px;color:var(--gold3);letter-spacing:0.18em;text-transform:uppercase;
+  display:flex;align-items:center;gap:10px;margin-bottom:.75rem;font-weight:700}
+.sec-tag::before{content:'§';color:var(--copper);font-family:var(--serif);font-size:14px}
+.sec-title{font-family:var(--serif);font-size:clamp(2.2rem,3.8vw,3.4rem);font-weight:600;
+  letter-spacing:-0.01em;line-height:1.0;margin-bottom:1rem;color:var(--cream)}
+.sec-sub{font-size:13px;color:var(--muted);max-width:560px;line-height:2;margin-bottom:3rem;
+  letter-spacing:0.01em}
+
+/* ── MODULE CARDS ── */
+#modules{background:var(--bg2)}
+#modules .inner::before{
+  content:'';display:block;height:1px;margin-bottom:3rem;
+  background:linear-gradient(90deg,var(--border2),transparent)}
+
+.modules-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1px;
+  background:var(--border);border:1px solid var(--border);overflow:hidden;border-radius:2px}
+
+.mod-card{background:var(--bg3);padding:2rem;cursor:pointer;transition:all .3s;
+  position:relative;overflow:hidden}
+.mod-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,var(--mc-accent,var(--gold)),transparent);
+  transform:scaleX(0);transform-origin:left;transition:transform .4s}
+.mod-card::after{content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse 200px 200px at 0% 0%,var(--gold-dim),transparent);
+  opacity:0;transition:opacity .35s;pointer-events:none}
+.mod-card:hover{background:var(--surface2);z-index:1}
+.mod-card:hover::before{transform:scaleX(1)}
+.mod-card:hover::after{opacity:1}
+
+.mod-icon{font-size:22px;margin-bottom:1.25rem;display:block;
+  filter:grayscale(0.3);transition:filter .3s}
+.mod-card:hover .mod-icon{filter:none}
+.mod-title{font-family:var(--serif-sc);font-size:15px;font-weight:700;margin-bottom:.6rem;
+  color:var(--mc-accent,var(--gold));letter-spacing:0.04em}
+.mod-desc{font-size:12px;color:var(--muted);line-height:1.9;letter-spacing:0.01em}
+.mod-formula{margin-top:1.25rem;padding:.85rem 1rem;
+  background:rgba(0,0,0,0.25);
+  border-left:2px solid var(--mc-accent,var(--gold));
+  font-family:var(--mono);font-size:12px;color:var(--cream2)}
+
+/* ── SIMULATOR ── */
+#simulator{background:var(--bg)}
+.sim-layout{display:grid;grid-template-columns:360px 1fr;gap:2rem;align-items:start}
+
+.sim-panel{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:2px;
+  padding:1.75rem;
+  box-shadow:var(--shadow-sm);
+  position:relative}
+.sim-panel::before{content:'';position:absolute;top:0;left:1.75rem;right:1.75rem;height:1px;
+  background:linear-gradient(90deg,var(--gold3),transparent)}
+
+.sim-panel h3{font-family:var(--serif-sc);font-size:14px;font-weight:700;color:var(--gold);
+  margin-bottom:1.5rem;display:flex;align-items:center;gap:10px;
+  letter-spacing:0.08em;text-transform:uppercase}
+
+.form-group{margin-bottom:1.25rem}
+.form-group label{display:block;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;
+  color:var(--muted);margin-bottom:.5rem;font-weight:600}
+.form-group input,.form-group select{
+  width:100%;padding:10px 14px;
+  background:var(--bg4);
+  border:1px solid var(--border);
+  border-radius:2px;
+  color:var(--cream);
+  font-family:var(--mono);font-size:13px;
+  transition:border-color .2s;
+  appearance:none}
+.form-group select{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238a826a' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+.form-group input:focus,.form-group select:focus{outline:none;border-color:var(--gold3);
+  background:var(--bg3);box-shadow:0 0 0 3px rgba(212,185,120,0.08)}
+
+.candidate-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;min-height:36px}
+.ctag{padding:5px 13px;border-radius:2px;font-size:11px;cursor:pointer;
+  border:1px solid var(--border2);background:var(--gold-dim);color:var(--gold2);
+  transition:all .2s;letter-spacing:0.05em;font-weight:500}
+.ctag:hover{background:var(--gold);color:#0f0f0e;border-color:var(--gold)}
+.ctag.active{background:var(--gold);color:#0f0f0e;border-color:var(--gold)}
+
+.run-btn{width:100%;padding:13px;
+  background:linear-gradient(135deg,var(--gold),var(--gold3));
+  color:#0f0f0e;border:none;border-radius:2px;
+  font-family:var(--mono);font-size:13px;font-weight:700;
+  cursor:pointer;transition:all .25s;margin-top:.5rem;
+  letter-spacing:0.06em;text-transform:uppercase;
+  box-shadow:0 4px 16px rgba(212,185,120,0.20)}
+.run-btn:hover{filter:brightness(1.1);box-shadow:0 8px 28px rgba(212,185,120,0.30);transform:translateY(-1px)}
+.run-btn.secondary{background:var(--bg4);color:var(--sage);
+  border:1px solid rgba(122,158,126,0.25);box-shadow:none;
+  background-image:none}
+.run-btn.secondary:hover{background:var(--sage-dim);box-shadow:none;transform:none;filter:none}
+.run-btn.danger-btn{background:var(--bg4);color:var(--crimson);
+  border:1px solid rgba(192,72,72,0.2);box-shadow:none;background-image:none}
+.run-btn.danger-btn:hover{background:var(--crimson-dim);transform:none;box-shadow:none;filter:none}
+
+.method-btn{width:100%;padding:9px 14px;background:var(--bg4);color:var(--muted);
+  border:1px solid var(--border);border-radius:2px;font-family:var(--mono);font-size:11px;
+  cursor:pointer;transition:all .2s;margin-top:6px;text-align:left;letter-spacing:0.04em}
+.method-btn:hover,.method-btn.active{background:var(--gold-dim);color:var(--gold2);
+  border-color:var(--border2)}
+
+/* bias sliders */
+.bias-group{margin-top:.5rem}
+.bias-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.bias-label{font-size:10px;color:var(--muted);width:60px;flex-shrink:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:0.04em}
+.bias-range{flex:1;-webkit-appearance:none;height:3px;
+  background:var(--bg3);border-radius:0;cursor:pointer}
+.bias-range::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;
+  background:var(--gold);border-radius:50%;cursor:pointer;
+  box-shadow:0 0 8px rgba(212,185,120,0.40)}
+.bias-val{font-size:11px;color:var(--gold);width:26px;text-align:right;font-weight:600}
+
+/* seed control */
+.seed-row{display:flex;gap:8px;align-items:center}
+.seed-row input{flex:1;min-width:0}
+.seed-row button{padding:9px 12px;background:var(--bg4);border:1px solid var(--border);
+  border-radius:2px;font-family:var(--mono);font-size:11px;color:var(--muted);
+  cursor:pointer;white-space:nowrap;transition:all .2s;letter-spacing:0.04em}
+.seed-row button:hover{color:var(--gold2);border-color:var(--border2)}
+
+/* ── OUTPUT AREA ── */
+.output-area{display:flex;flex-direction:column;gap:1.5rem}
+.out-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;
+  padding:1.75rem;box-shadow:var(--shadow-sm)}
+.out-card h3{font-family:var(--serif);font-size:15px;font-weight:700;color:var(--teal);
+  margin-bottom:1.25rem;display:flex;align-items:center;gap:8px}
+.tab-row{display:flex;gap:6px;margin-bottom:1.25rem;flex-wrap:wrap}
+.tab-btn{padding:7px 16px;background:var(--bg3);border:1px solid var(--border);
+  border-radius:8px;color:var(--muted);font-family:var(--mono);font-size:12px;
+  cursor:pointer;transition:all .2s}
+.tab-btn.active{background:var(--olive-dim);color:var(--olive);border-color:var(--border2)}
+canvas{width:100%;border-radius:10px;background:var(--bg3)}
+.results-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:1rem}
+.res-card{background:var(--bg3);border-radius:10px;padding:1.25rem;text-align:center;
+  border:1px solid var(--border)}
+.res-num{font-family:var(--serif);font-size:2.4rem;font-weight:800;line-height:1}
+.res-lbl{font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);
+  margin-top:.4rem}
+.winner-bar{display:flex;align-items:center;gap:12px;padding:10px 0;
+  border-bottom:1px solid var(--border)}
+.winner-bar:last-child{border-bottom:none}
+.wbar-name{width:90px;font-size:13px;color:var(--ink)}
+.wbar-track{flex:1;height:8px;background:var(--bg3);border-radius:4px;overflow:hidden}
+.wbar-fill{height:100%;border-radius:4px;transition:width 1s cubic-bezier(.4,0,.2,1)}
+.wbar-val{width:40px;text-align:right;font-size:12px;color:var(--olive);font-weight:500}
+.log-area{background:var(--bg3);border-radius:10px;padding:1.25rem;
+  max-height:260px;overflow-y:auto;font-size:12px;line-height:2;border:1px solid var(--border)}
+.log-area::-webkit-scrollbar{width:4px}
+.log-area::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.log-line{display:flex;gap:10px;padding:2px 0}
+.log-key{color:var(--olive);flex-shrink:0;font-weight:600}
+.log-val{color:var(--muted)}
+.perm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;
+  max-height:240px;overflow-y:auto}
+.perm-cell{padding:6px 10px;background:var(--bg3);border-radius:6px;
+  font-size:11px;color:var(--teal);border:1px solid var(--teal-dim);text-align:center;
+  animation:fadeUp .3s ease both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.relation-table{width:100%;border-collapse:collapse;font-size:12px}
+.relation-table th{padding:8px 12px;background:var(--bg3);color:var(--olive);
+  text-align:center;border:1px solid var(--border);font-family:var(--serif)}
+.relation-table td{padding:8px 12px;border:1px solid var(--border);text-align:center;color:var(--muted)}
+.rel-yes{color:var(--olive);font-weight:700}
+.rel-no{color:var(--red)}
+.fairness-row{display:flex;align-items:center;justify-content:space-between;
+  padding:10px 0;border-bottom:1px solid var(--border)}
+.fairness-row:last-child{border-bottom:none}
+.fairness-method{font-size:13px;color:var(--ink)}
+.fairness-winner{font-size:13px;color:var(--olive);font-weight:600}
+.fairness-score{padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600}
+.score-high{background:rgba(90,100,55,0.12);color:var(--olive)}
+.score-mid{background:rgba(192,144,64,0.12);color:var(--gold)}
+.score-low{background:rgba(184,64,64,0.1);color:var(--red)}
+
+/* ── Borda bar chart tab ── */
+.borda-bars{padding:.5rem 0}
+.borda-bar-row{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border)}
+.borda-bar-row:last-child{border-bottom:none}
+.borda-name{width:90px;font-size:13px;color:var(--ink)}
+.borda-track{flex:1;height:10px;background:var(--bg3);border-radius:5px;overflow:hidden}
+.borda-fill{height:100%;border-radius:5px;transition:width 1s cubic-bezier(.4,0,.2,1)}
+.borda-score{width:50px;text-align:right;font-size:12px;font-weight:600}
+
+/* ── Voter sample modal ── */
+.ballot-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;
+  max-height:280px;overflow-y:auto}
+.ballot-card{background:var(--bg3);border:1px solid var(--border);border-radius:8px;
+  padding:8px 10px;font-size:11px}
+.ballot-rank{color:var(--muted);font-size:10px}
+.ballot-name{color:var(--olive);font-weight:600}
+
+/* ── GRAPH CANVAS ── */
+.graph-wrap{position:relative;border-radius:10px;overflow:hidden;background:var(--bg3)}
+#graphCanvas{display:block;width:100%;cursor:grab}
+.graph-legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px}
+.leg-item{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)}
+.leg-dot{width:10px;height:10px;border-radius:50%}
+
+/* Export toolbar */
+.export-bar{display:flex;gap:8px;margin-top:1rem;flex-wrap:wrap}
+.export-btn{padding:7px 16px;background:var(--bg3);border:1px solid var(--border);
+  border-radius:8px;font-family:var(--mono);font-size:11px;color:var(--muted);
+  cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:5px}
+.export-btn:hover{color:var(--olive);border-color:var(--border2);background:var(--olive-dim)}
+
+/* ── THEORY ── */
+#theory{background:var(--bg2)}
+.theory-grid{display:grid;grid-template-columns:1fr 1fr;gap:2rem}
+.theory-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;
+  padding:2rem;position:relative;overflow:hidden;box-shadow:var(--shadow-sm)}
+.theory-card::after{content:'';position:absolute;bottom:0;right:0;
+  width:120px;height:120px;border-radius:50%;
+  background:radial-gradient(circle,var(--tc-glow,rgba(90,100,55,0.06)) 0%,transparent 70%);
+  pointer-events:none}
+.theory-card h3{font-family:var(--serif);font-size:18px;font-weight:700;
+  color:var(--tc-col,var(--olive));margin-bottom:.75rem}
+.theory-card p{font-size:13px;color:var(--muted);line-height:1.85;margin-bottom:1rem}
+.formula-box{padding:1rem 1.25rem;background:var(--bg3);border-radius:8px;
+  font-family:var(--mono);font-size:14px;color:var(--olive3);
+  border-left:3px solid var(--tc-col,var(--olive));margin:.75rem 0}
+.formula-box .comment{color:var(--muted2);font-size:11px}
+.def-list{list-style:none;padding:0}
+.def-list li{padding:5px 0;font-size:13px;color:var(--muted);
+  display:flex;gap:8px;align-items:flex-start}
+.def-list li::before{content:'→';color:var(--tc-col,var(--olive));flex-shrink:0;font-weight:700}
+
+/* ── RESULTS ── */
+#results{background:var(--bg)}
+.results-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:2.5rem}
+.sum-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  padding:1.5rem;text-align:center;box-shadow:var(--shadow-sm)}
+.sum-big{font-family:var(--serif);font-size:3rem;font-weight:800;line-height:1;color:var(--olive)}
+.sum-lbl{font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-top:.4rem}
+
+/* ── FOOTER ── */
+footer{background:var(--bg2);border-top:1px solid var(--border);
+  padding:3rem 2.5rem;text-align:center}
+.footer-logo{font-family:var(--serif);font-size:24px;font-weight:800;color:var(--olive);
+  margin-bottom:.75rem}
+.footer-sub{font-size:13px;color:var(--muted);margin-bottom:1.5rem}
+.footer-tags{display:flex;justify-content:center;flex-wrap:wrap;gap:8px}
+
+/* ── Reveal animation ── */
+.reveal{opacity:0;transform:translateY(20px);transition:opacity .6s ease,transform .6s ease}
+.reveal.visible{opacity:1;transform:none}
+
+/* ── Notification ── */
+.notif{position:fixed;bottom:2rem;right:2rem;z-index:999;
+  padding:12px 20px;background:var(--olive);color:#fff;
+  border-radius:10px;font-size:13px;font-weight:500;
+  transform:translateY(120%);transition:transform .4s;box-shadow:var(--shadow-md)}
+.notif.show{transform:none}
+
+/* ── Scenario badge ── */
+.scenario-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;
+  background:var(--cream);border:1px solid var(--border);border-radius:12px;
+  font-size:11px;color:var(--clay);margin-top:6px}
+
+/* ── Modal overlay ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(30,32,16,0.45);
+  z-index:500;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+.modal-overlay.open{display:flex}
+.modal-box{background:var(--surface);border-radius:16px;padding:2rem;
+  max-width:600px;width:90%;max-height:80vh;overflow-y:auto;box-shadow:var(--shadow-lg);
+  border:1px solid var(--border)}
+.modal-box h3{font-family:var(--serif);font-size:18px;font-weight:700;color:var(--olive);
+  margin-bottom:1.25rem;display:flex;justify-content:space-between;align-items:center}
+.modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted)}
+.modal-close:hover{color:var(--red)}
+
+/* ── History table ── */
+.history-table{width:100%;border-collapse:collapse;font-size:12px}
+.history-table th{padding:8px 10px;background:var(--bg3);color:var(--olive);text-align:left;
+  border-bottom:1px solid var(--border);font-family:var(--serif);font-weight:700}
+.history-table td{padding:7px 10px;border-bottom:1px solid var(--border);color:var(--muted)}
+.history-table tr:hover td{background:var(--bg2)}
+.history-table .winner-cell{color:var(--olive);font-weight:600}
+.no-history{text-align:center;color:var(--muted);font-size:13px;padding:2rem}
+
+/* ── Scenario presets ── */
+.preset-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:.5rem}
+.preset-btn{padding:8px 12px;background:var(--bg3);border:1px solid var(--border);
+  border-radius:8px;font-family:var(--mono);font-size:11px;color:var(--muted);
+  cursor:pointer;transition:all .2s;text-align:left}
+.preset-btn:hover{background:var(--olive-dim);color:var(--olive);border-color:var(--border2)}
+.preset-btn strong{display:block;color:var(--ink);font-size:12px;margin-bottom:2px}
+
+/* responsive */
+@media(max-width:900px){
+  .hero{grid-template-columns:1fr;text-align:center}
+  .hero-right{display:none}
+  .sim-layout{grid-template-columns:1fr}
+  .theory-grid{grid-template-columns:1fr}
+  .results-summary{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">
+    <div class="logo-mark">⚖</div>
+    VoteForge
+  </div>
+  <div class="nav-links">
+    <a href="#modules">Concepts</a>
+    <a href="#simulator">Simulator</a>
+    <a href="#theory">Theory</a>
+    <a href="#results">Results</a>
+  </div>
+  <div class="nav-pill">Discrete Math Project</div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div>
+    <div class="hero-eyebrow">Voting System Analysis</div>
+    <h1>
+      <span class="hl-olive">Combinatorics</span><br>
+      meets <span class="hl-teal">Democracy</span>
+    </h1>
+    <p class="hero-sub">
+      Analyze voting patterns using permutations, graph theory, inclusion-exclusion,
+      and relations. Simulate elections and evaluate fairness across multiple voting systems.
+    </p>
+    <div class="chip-row">
+      <span class="chip chip-o">Permutations</span>
+      <span class="chip chip-t">Graph Theory</span>
+      <span class="chip chip-o">Inclusion-Exclusion</span>
+      <span class="chip chip-c">Relations</span>
+      <span class="chip chip-t">Fairness Analysis</span>
+    </div>
+    <button class="btn-primary" onclick="document.getElementById('simulator').scrollIntoView({behavior:'smooth'})">
+      Launch Simulator →
+    </button>
+    <button class="btn-outline" onclick="document.getElementById('theory').scrollIntoView({behavior:'smooth'})">
+      View Theory
+    </button>
+  </div>
+  <div class="hero-right">
+    <div class="hero-badge">
+      <div class="hero-badge-ring"></div>
+      <div class="hero-badge-ring2"></div>
+      <div class="orbit-dot"></div>
+      <div class="orbit-dot"></div>
+      <div class="hero-badge-inner">
+        <span class="big">4!</span>
+        <span class="sm">= 24 orderings</span>
+        <div style="margin-top:12px;font-size:11px;color:var(--muted)">n! Permutations</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MODULES -->
+<section id="modules">
+  <div class="inner">
+    <div class="sec-tag">Core Concepts</div>
+    <h2 class="sec-title reveal">Mathematical Foundations</h2>
+    <p class="sec-sub reveal">Six discrete mathematics modules working together to analyse, simulate and evaluate any election system.</p>
+    <div class="modules-grid">
+      <div class="mod-card reveal" style="--mc-accent:var(--olive)">
+        <span class="mod-icon">🔢</span>
+        <div class="mod-title">Permutation Engine</div>
+        <div class="mod-desc">Generates all possible candidate rankings using factorial combinatorics. Every voter preference ordering is mathematically enumerated.</div>
+        <div class="mod-formula">P(n,r) = n! / (n−r)!<br><span style="color:var(--muted2);font-size:11px">// 4 candidates → 4! = 24 orderings</span></div>
+      </div>
+      <div class="mod-card reveal" style="--mc-accent:var(--teal)">
+        <span class="mod-icon">🕸</span>
+        <div class="mod-title">Graph Modeling</div>
+        <div class="mod-desc">Represents candidates as vertices and voter preferences as directed weighted edges. Visualizes dominance and preference flows.</div>
+        <div class="mod-formula">G = (V, E)<br><span style="color:var(--muted2);font-size:11px">// V = candidates, E = preferences</span></div>
+      </div>
+      <div class="mod-card reveal" style="--mc-accent:var(--clay)">
+        <span class="mod-icon">∩</span>
+        <div class="mod-title">Inclusion-Exclusion</div>
+        <div class="mod-desc">Correctly counts overlapping voter preference groups, eliminating duplicate counting in multi-candidate scenarios.</div>
+        <div class="mod-formula">|A∪B| = |A|+|B| − |A∩B|<br><span style="color:var(--muted2);font-size:11px">// Avoids double counting</span></div>
+      </div>
+      <div class="mod-card reveal" style="--mc-accent:#7a5a8a">
+        <span class="mod-icon">↔</span>
+        <div class="mod-title">Relation Analysis</div>
+        <div class="mod-desc">Studies preference relations — reflexive, symmetric, transitive, and equivalence — to detect voting consistency and cycles.</div>
+        <div class="mod-formula">R ⊆ A × A<br><span style="color:var(--muted2);font-size:11px">// Preference relation matrix</span></div>
+      </div>
+      <div class="mod-card reveal" style="--mc-accent:var(--red)">
+        <span class="mod-icon">⚖</span>
+        <div class="mod-title">Fairness Evaluator</div>
+        <div class="mod-desc">Compares four voting systems — Plurality, Ranked Choice, Borda Count, and Condorcet Method — detecting bias and paradoxes.</div>
+        <div class="mod-formula">Borda(c) = Σ (n−rank_i)<br><span style="color:var(--muted2);font-size:11px">// Weighted position score</span></div>
+      </div>
+      <div class="mod-card reveal" style="--mc-accent:var(--olive2)">
+        <span class="mod-icon">🎲</span>
+        <div class="mod-title">Result Simulator</div>
+        <div class="mod-desc">Runs complete election simulations with configurable voters, candidates, and bias weights. Exports results for further analysis.</div>
+        <div class="mod-formula">winner = argmax(votes(c))<br><span style="color:var(--muted2);font-size:11px">// Across all voting methods</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SIMULATOR -->
+<section id="simulator">
+  <div class="inner">
+    <div class="sec-tag">Interactive Tool</div>
+    <h2 class="sec-title reveal">Live Election Simulator</h2>
+    <p class="sec-sub reveal">Configure candidates, voter counts, bias weights, and seed — then run full combinatorics analysis across all voting methods.</p>
+
+    <div class="sim-layout">
+      <!-- LEFT PANEL -->
+      <div>
+        <div class="sim-panel">
+          <h3>⚙ Configuration</h3>
+
+          <div class="form-group">
+            <label>Number of Candidates</label>
+            <select id="numCands" onchange="updateCandidates()">
+              <option value="3">3 Candidates</option>
+              <option value="4" selected>4 Candidates</option>
+              <option value="5">5 Candidates</option>
+              <option value="6">6 Candidates</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Number of Voters</label>
+            <input type="number" id="numVoters" value="50" min="5" max="1000">
+          </div>
+
+          <div class="form-group">
+            <label>Random Seed (for reproducibility)</label>
+            <div class="seed-row">
+              <input type="number" id="seedVal" value="42" min="0" max="99999">
+              <button onclick="randomSeed()">🎲 Random</button>
+              <button onclick="lockSeed()" id="lockBtn">🔓 Free</button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Candidate Names (click to rename)</label>
+            <div class="candidate-tags" id="candTags"></div>
+          </div>
+
+          <!-- NEW: Candidate popularity bias -->
+          <div class="form-group">
+            <label>Candidate Popularity Bias <span style="color:var(--muted2);font-size:10px">(higher = more likely to win)</span></label>
+            <div class="bias-group" id="biasGroup"></div>
+          </div>
+
+          <div class="form-group">
+            <label>Voting Method</label>
+            <button class="method-btn active" id="mbtn-all" onclick="setMethod('all',this)">▶ All Methods (Compare)</button>
+            <button class="method-btn" id="mbtn-plurality" onclick="setMethod('plurality',this)">Plurality Voting</button>
+            <button class="method-btn" id="mbtn-borda" onclick="setMethod('borda',this)">Borda Count</button>
+            <button class="method-btn" id="mbtn-ranked" onclick="setMethod('ranked',this)">Ranked Choice (IRV)</button>
+            <button class="method-btn" id="mbtn-condorcet" onclick="setMethod('condorcet',this)">Condorcet Method</button>
+          </div>
+
+          <!-- Scenario presets -->
+          <div class="form-group">
+            <label>Quick Scenario Presets</label>
+            <div class="preset-grid">
+              <button class="preset-btn" onclick="loadPreset('tight')"><strong>Tight Race</strong>Even popularity bias</button>
+              <button class="preset-btn" onclick="loadPreset('frontrunner')"><strong>Front-runner</strong>One dominant candidate</button>
+              <button class="preset-btn" onclick="loadPreset('paradox')"><strong>Paradox Hunt</strong>Cycle-prone setup</button>
+              <button class="preset-btn" onclick="loadPreset('polarised')"><strong>Polarised</strong>Two factions</button>
+            </div>
+          </div>
+
+          <button class="run-btn" onclick="runSimulation()">🗳 Run Full Analysis</button>
+          <button class="run-btn secondary" style="margin-top:8px" onclick="randomizeVotes()">🎲 Randomize & Run</button>
+          <button class="run-btn secondary" style="margin-top:8px" onclick="openBallotModal()">🗂 View Sample Ballots</button>
+          <button class="run-btn danger-btn" style="margin-top:8px" onclick="clearHistory()">🗑 Clear History</button>
+        </div>
+
+        <!-- IE Panel -->
+        <div class="sim-panel" style="margin-top:1.25rem">
+          <h3>∩ Inclusion-Exclusion Live</h3>
+          <div id="iePanel" style="font-size:13px;color:var(--muted);line-height:2">
+            Run simulation to see the inclusion-exclusion calculation for overlapping voter groups.
+          </div>
+        </div>
+
+        <!-- History panel -->
+        <div class="sim-panel" style="margin-top:1.25rem">
+          <h3>📋 Run History <span style="font-size:12px;font-weight:400;color:var(--muted)" id="histCount">(0 runs)</span></h3>
+          <div id="historyTable"><div class="no-history">No runs yet.</div></div>
+          <div class="export-bar" style="margin-top:.75rem">
+            <button class="export-btn" onclick="exportHistory()">⬇ Export CSV</button>
+            <button class="export-btn" onclick="openHistoryModal()">🔍 Full History</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT OUTPUT -->
+      <div class="output-area">
+
+        <!-- Metrics -->
+        <div class="out-card">
+          <h3>📊 Election Metrics</h3>
+          <div class="results-grid" id="metricsGrid">
+            <div class="res-card"><div class="res-num" style="color:var(--olive)" id="m-voters">—</div><div class="res-lbl">Voters</div></div>
+            <div class="res-card"><div class="res-num" style="color:var(--teal)" id="m-cands">—</div><div class="res-lbl">Candidates</div></div>
+            <div class="res-card"><div class="res-num" style="color:var(--clay)" id="m-perms">—</div><div class="res-lbl">Permutations</div></div>
+            <div class="res-card"><div class="res-num" style="color:#7a5a8a" id="m-winner">—</div><div class="res-lbl">Plurality Winner</div></div>
+          </div>
+          <div id="scenarioBadge" style="margin-top:.75rem"></div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="out-card">
+          <div class="tab-row">
+            <button class="tab-btn active" onclick="showTab('vote-dist',this)">Vote Distribution</button>
+            <button class="tab-btn" onclick="showTab('borda-chart',this)">Borda Scores</button>
+            <button class="tab-btn" onclick="showTab('graph',this)">Preference Graph</button>
+            <button class="tab-btn" onclick="showTab('perms',this)">Permutations</button>
+            <button class="tab-btn" onclick="showTab('relations',this)">Relations</button>
+            <button class="tab-btn" onclick="showTab('fairness',this)">Fairness</button>
+          </div>
+
+          <!-- Vote Distribution -->
+          <div id="tab-vote-dist">
+            <div id="voteDistBars" style="padding:.5rem 0">
+              <div style="color:var(--muted);font-size:13px;text-align:center;padding:2rem">
+                Run the simulation to see vote distribution.
+              </div>
+            </div>
+            <div class="export-bar" id="exportBars" style="display:none">
+              <button class="export-btn" onclick="exportVoteDist()">⬇ Export Vote Data</button>
+              <button class="export-btn" onclick="copyVoteData()">📋 Copy as Text</button>
+            </div>
+          </div>
+
+          <!-- Borda bar chart (NEW) -->
+          <div id="tab-borda-chart" style="display:none">
+            <div class="borda-bars" id="bordaBars">
+              <div style="color:var(--muted);font-size:13px;text-align:center;padding:2rem">
+                Run the simulation to see Borda scores.
+              </div>
+            </div>
+          </div>
+
+          <!-- Graph -->
+          <div id="tab-graph" style="display:none">
+            <div class="graph-wrap">
+              <canvas id="graphCanvas" height="380"></canvas>
+            </div>
+            <div class="graph-legend">
+              <div class="leg-item"><div class="leg-dot" style="background:var(--olive)"></div>Candidate (Vertex)</div>
+              <div class="leg-item"><div class="leg-dot" style="background:var(--teal)"></div>Preference Edge (→)</div>
+              <div class="leg-item"><div class="leg-dot" style="background:var(--red)"></div>High Weight</div>
+            </div>
+            <div class="export-bar" id="exportGraph" style="display:none;margin-top:.75rem">
+              <button class="export-btn" onclick="exportGraph()">⬇ Save Graph PNG</button>
+            </div>
+          </div>
+
+          <!-- Permutations -->
+          <div id="tab-perms" style="display:none">
+            <div style="margin-bottom:.75rem;font-size:13px;color:var(--muted)">
+              All <span id="permCount" style="color:var(--olive)">0</span> possible candidate orderings (P(n,n) = n!):
+            </div>
+            <div class="perm-grid" id="permGrid"></div>
+          </div>
+
+          <!-- Relations -->
+          <div id="tab-relations" style="display:none">
+            <div style="margin-bottom:1rem;font-size:13px;color:var(--muted)">
+              Preference relation matrix — R[i][j] = 1 if majority prefer candidate i over j
+            </div>
+            <div style="overflow-x:auto">
+              <table class="relation-table" id="relTable"></table>
+            </div>
+            <div style="margin-top:1.25rem" id="relProps"></div>
+          </div>
+
+          <!-- Fairness -->
+          <div id="tab-fairness" style="display:none">
+            <div id="fairnessPanel">
+              <div style="color:var(--muted);font-size:13px;text-align:center;padding:2rem">
+                Run simulation to see fairness comparison across voting methods.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Log -->
+        <div class="out-card">
+          <h3 style="display:flex;justify-content:space-between">
+            <span>🧮 Computation Log</span>
+            <button class="export-btn" onclick="clearLog()" style="font-size:11px;padding:4px 10px">Clear</button>
+          </h3>
+          <div class="log-area" id="logArea">
+            <div class="log-line"><span class="log-key">[INIT]</span><span class="log-val">Voting System Analysis — Ready. Configure and run simulation.</span></div>
+          </div>
+          <div class="export-bar" style="margin-top:.75rem">
+            <button class="export-btn" onclick="exportLog()">⬇ Export Log</button>
+            <button class="export-btn" onclick="copyLog()">📋 Copy Log</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- THEORY -->
+<section id="theory">
+  <div class="inner">
+    <div class="sec-tag">Mathematical Framework</div>
+    <h2 class="sec-title reveal">Discrete Mathematics Deep Dive</h2>
+    <p class="sec-sub reveal">The theoretical foundations powering every calculation in the simulator.</p>
+    <div class="theory-grid">
+      <div class="theory-card reveal" style="--tc-col:var(--olive);--tc-glow:rgba(90,100,55,0.07)">
+        <h3>Permutations & Combinatorics</h3>
+        <p>A permutation is an ordered arrangement. With n candidates, voters can express their preferences in n! distinct orderings. The number of ways to rank r out of n candidates uses the partial permutation formula.</p>
+        <div class="formula-box">P(n, r) = n! / (n − r)!<br>
+        <span class="comment">// 4 candidates, all ranked: P(4,4) = 4!/0! = 24</span></div>
+        <ul class="def-list">
+          <li>Every unique vote ordering is a permutation of candidates</li>
+          <li>Total preference space has n! elements</li>
+          <li>Used to enumerate all possible election outcomes</li>
+        </ul>
+      </div>
+      <div class="theory-card reveal" style="--tc-col:var(--teal);--tc-glow:rgba(58,112,104,0.06)">
+        <h3>Graph Theory</h3>
+        <p>The election is modeled as a directed weighted graph G = (V, E). Each candidate is a vertex. A directed edge (A → B) with weight w means w voters prefer A over B. The graph reveals dominance cycles (Condorcet paradox).</p>
+        <div class="formula-box">G = (V, E, w)<br>
+        <span class="comment">// V = {A,B,C,D}, E ⊆ V×V, w: E → ℕ</span></div>
+        <ul class="def-list">
+          <li>Vertices represent candidates</li>
+          <li>Directed edges model preference direction</li>
+          <li>Edge weights = number of voters</li>
+          <li>Condorcet winner has all outgoing edges dominant</li>
+        </ul>
+      </div>
+      <div class="theory-card reveal" style="--tc-col:var(--clay);--tc-glow:rgba(176,114,64,0.06)">
+        <h3>Inclusion-Exclusion Principle</h3>
+        <p>When counting voters who prefer multiple candidates simultaneously, naive addition double-counts the overlap. The inclusion-exclusion principle corrects this for any number of overlapping sets.</p>
+        <div class="formula-box">|A∪B∪C| = |A|+|B|+|C| − |A∩B| − |A∩C| − |B∩C| + |A∩B∩C|<br>
+        <span class="comment">// Generalises to n sets via alternating sum</span></div>
+        <ul class="def-list">
+          <li>Prevents double-counting overlapping voter groups</li>
+          <li>Used in multi-winner and coalition analysis</li>
+          <li>Generalises via Möbius inversion</li>
+        </ul>
+      </div>
+      <div class="theory-card reveal" style="--tc-col:#7a5a8a;--tc-glow:rgba(122,90,138,0.05)">
+        <h3>Relations & Properties</h3>
+        <p>A preference relation R ⊆ C × C over candidates C captures pairwise preferences. Analysing its algebraic properties reveals voting consistency and detects paradoxes like the Condorcet cycle.</p>
+        <div class="formula-box">aRb ⟺ majority prefer a over b<br>
+        <span class="comment">// Transitivity: aRb ∧ bRc ⟹ aRc</span></div>
+        <ul class="def-list">
+          <li><strong style="color:#7a5a8a">Reflexive:</strong> every candidate preferred over itself</li>
+          <li><strong style="color:#7a5a8a">Transitive:</strong> preference chains are consistent</li>
+          <li><strong style="color:#7a5a8a">Asymmetric:</strong> if A≻B then ¬(B≻A)</li>
+          <li><strong style="color:#7a5a8a">Total:</strong> every pair is comparable</li>
+        </ul>
+      </div>
+      <div class="theory-card reveal" style="--tc-col:var(--red);--tc-glow:rgba(184,64,64,0.05)">
+        <h3>Voting System Fairness</h3>
+        <p>Arrow's Impossibility Theorem (1951) proves no ranked voting system satisfies all fairness criteria simultaneously. We compare systems against: unanimity, independence of irrelevant alternatives, and non-dictatorship.</p>
+        <div class="formula-box">Borda(c) = Σᵢ (n − rankᵢ(c))<br>
+        <span class="comment">// Higher position = more points</span></div>
+        <ul class="def-list">
+          <li>Plurality: simple majority, susceptible to spoilers</li>
+          <li>Borda Count: weighted position scoring</li>
+          <li>IRV: eliminates last-place iteratively</li>
+          <li>Condorcet: winner beats all others head-to-head</li>
+        </ul>
+      </div>
+      <div class="theory-card reveal" style="--tc-col:var(--olive2);--tc-glow:rgba(110,122,66,0.05)">
+        <h3>Simulation Model</h3>
+        <p>Voters are generated stochastically with weighted preference profiles, producing realistic ballot distributions with varying degrees of consensus and strategic voting patterns. Bias sliders let you model real-world scenarios.</p>
+        <div class="formula-box">weights ~ Bias(α) + Uniform noise<br>
+        <span class="comment">// α controls consensus & popularity bias</span></div>
+        <ul class="def-list">
+          <li>Each voter ranks all candidates randomly</li>
+          <li>Preference weights model realistic distributions</li>
+          <li>Seeded RNG enables reproducible analysis</li>
+          <li>Scenario presets for paradox hunting</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- RESULTS SUMMARY -->
+<section id="results">
+  <div class="inner">
+    <div class="sec-tag">Key Outcomes</div>
+    <h2 class="sec-title reveal">Simulation Results</h2>
+    <p class="sec-sub reveal">Statistical summary of the most recently completed simulation run.</p>
+
+    <div class="results-summary" id="resultsSummary">
+      <div class="sum-card"><div class="sum-big" id="rs-total">—</div><div class="sum-lbl">Total Votes Cast</div></div>
+      <div class="sum-card"><div class="sum-big" style="color:var(--teal)" id="rs-perms">—</div><div class="sum-lbl">Permutations Analysed</div></div>
+      <div class="sum-card"><div class="sum-big" style="color:var(--clay)" id="rs-winner">—</div><div class="sum-lbl">Plurality Winner</div></div>
+      <div class="sum-card"><div class="sum-big" style="color:#7a5a8a" id="rs-borda">—</div><div class="sum-lbl">Borda Winner</div></div>
+    </div>
+
+    <div class="out-card" id="resultsDetail" style="min-height:120px;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-sm)">
+      <div style="color:var(--muted);font-size:14px">Run the simulator above to populate results.</div>
+    </div>
+
+    <div class="export-bar" id="resultsExportBar" style="display:none;margin-top:1rem">
+      <button class="export-btn" onclick="exportResultsJSON()">⬇ Export Results JSON</button>
+      <button class="export-btn" onclick="exportResultsCSV()">⬇ Export Results CSV</button>
+      <button class="export-btn" onclick="printReport()">🖨 Print Report</button>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">VoteForge</div>
+  <div class="footer-sub">Voting System Analysis using Combinatorics · Discrete Mathematics Project</div>
+  <div class="footer-tags">
+    <span class="chip chip-o">Permutations</span>
+    <span class="chip chip-t">Graph Theory</span>
+    <span class="chip chip-o">Inclusion-Exclusion</span>
+    <span class="chip chip-c">Relations</span>
+    <span class="chip chip-t">Condorcet Method</span>
+    <span class="chip chip-o">Borda Count</span>
+  </div>
+</footer>
+
+<div class="notif" id="notif"></div>
+
+<!-- Ballot Modal -->
+<div class="modal-overlay" id="ballotModal">
+  <div class="modal-box">
+    <h3>🗂 Sample Ballots
+      <button class="modal-close" onclick="closeModal('ballotModal')">✕</button>
+    </h3>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:1rem">Showing first 40 ballots from the last simulation run (each shows voter's full ranking, most preferred → least preferred).</p>
+    <div id="ballotGrid" class="ballot-grid"></div>
+  </div>
+</div>
+
+<!-- Full History Modal -->
+<div class="modal-overlay" id="historyModal">
+  <div class="modal-box">
+    <h3>📋 Full Run History
+      <button class="modal-close" onclick="closeModal('historyModal')">✕</button>
+    </h3>
+    <div id="fullHistoryTable"></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════
+let candidates = ['Alice','Bob','Carol','Dave'];
+let numVoters  = 50;
+let method     = 'all';
+let ballots    = [];
+let simRan     = false;
+let seedLocked = false;
+let lastSeed   = 42;
+let biasWeights= [1,1,1,1,1,1];
+let runHistory = [];
+let lastResults= null;
+
+// Seeded pseudo-RNG (mulberry32)
+function seededRng(seed){
+  return function(){
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+let rng = seededRng(42);
+
+// ═══════════════════════════════════════════════════════════
+//  INITIALISE
+// ═══════════════════════════════════════════════════════════
+function init(){
+  updateCandidates();
+  setupReveal();
+}
+
+function updateCandidates(){
+  const n = parseInt(document.getElementById('numCands').value);
+  const names = ['Alice','Bob','Carol','Dave','Eve','Frank'];
+  candidates = names.slice(0,n);
+  biasWeights = Array(n).fill(1);
+  renderCandTags();
+  renderBiasSliders();
+  updateHeroBadge();
+}
+
+function renderCandTags(){
+  const el = document.getElementById('candTags');
+  el.innerHTML = candidates.map((c,i)=>
+    `<div class="ctag" onclick="renameCand(${i})" title="Click to rename">${c}</div>`
+  ).join('');
+}
+
+function renameCand(i){
+  const name = prompt(`Rename candidate "${candidates[i]}" to:`, candidates[i]);
+  if(name && name.trim()){ candidates[i]=name.trim(); renderCandTags(); renderBiasSliders(); }
+}
+
+function renderBiasSliders(){
+  const el = document.getElementById('biasGroup');
+  const colors = ['var(--olive)','var(--teal)','var(--clay)','#7a5a8a','var(--red)','var(--olive2)'];
+  el.innerHTML = candidates.map((c,i)=>`
+    <div class="bias-row">
+      <span class="bias-label" title="${c}">${c}</span>
+      <input type="range" class="bias-range" min="0.1" max="3" step="0.1" value="${biasWeights[i]}"
+        style="accent-color:${colors[i%6]}"
+        oninput="biasWeights[${i}]=parseFloat(this.value);document.getElementById('bv${i}').textContent=parseFloat(this.value).toFixed(1)">
+      <span class="bias-val" id="bv${i}" style="color:${colors[i%6]}">${biasWeights[i].toFixed(1)}</span>
+    </div>`).join('');
+}
+
+function updateHeroBadge(){
+  const n = candidates.length;
+  document.querySelector('.hero-badge .big').textContent = n+'!';
+  document.querySelector('.hero-badge .sm').textContent = '= '+factorial(n)+' orderings';
+}
+
+function setMethod(m, btn){
+  method = m;
+  document.querySelectorAll('.method-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function showNotif(msg){
+  const el = document.getElementById('notif');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'), 2800);
+}
+
+function randomSeed(){
+  document.getElementById('seedVal').value = Math.floor(Math.random()*99999);
+}
+
+function lockSeed(){
+  seedLocked = !seedLocked;
+  document.getElementById('lockBtn').textContent = seedLocked ? '🔒 Locked' : '🔓 Free';
+}
+
+// ═══════════════════════════════════════════════════════════
+//  PRESET SCENARIOS
+// ═══════════════════════════════════════════════════════════
+function loadPreset(type){
+  const n = candidates.length;
+  if(type==='tight'){
+    biasWeights = Array(n).fill(1);
+  } else if(type==='frontrunner'){
+    biasWeights = [3,...Array(n-1).fill(0.5)];
+  } else if(type==='paradox'){
+    // Cycle-prone: A>B>C>A style
+    biasWeights = Array(n).fill(1);
+    document.getElementById('numVoters').value = 30;
+  } else if(type==='polarised'){
+    biasWeights = Array(n).fill(0.4);
+    biasWeights[0] = 2.5;
+    biasWeights[Math.min(1,n-1)] = 2.5;
+  }
+  biasWeights = biasWeights.slice(0,n);
+  renderBiasSliders();
+  showNotif(`Preset loaded: ${type}`);
+  runSimulation();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  MATH HELPERS
+// ═══════════════════════════════════════════════════════════
+function factorial(n){ return n<=1?1:n*factorial(n-1); }
+
+function permutations(arr){
+  if(arr.length===0) return [[]];
+  const result=[];
+  for(let i=0;i<arr.length;i++){
+    const rest=[...arr.slice(0,i),...arr.slice(i+1)];
+    for(const p of permutations(rest)) result.push([arr[i],...p]);
+  }
+  return result;
+}
+
+function generateBallots(n, cands){
+  const seed = parseInt(document.getElementById('seedVal').value)||42;
+  lastSeed = seed;
+  rng = seededRng(seed);
+  const b=[];
+  for(let i=0;i<n;i++){
+    const weights = cands.map((_,j)=>rng()*2 + biasWeights[j]*0.8);
+    const ranked  = cands.map((_,j)=>j).sort((a,c)=>weights[c]-weights[a]);
+    b.push(ranked);
+  }
+  return b;
+}
+
+function randomizeVotes(){
+  if(!seedLocked) document.getElementById('seedVal').value = Math.floor(Math.random()*99999);
+  numVoters = parseInt(document.getElementById('numVoters').value)||50;
+  ballots = generateBallots(numVoters, candidates);
+  runSimulation();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  VOTING METHODS
+// ═══════════════════════════════════════════════════════════
+function plurality(ballots, n){
+  const votes=Array(n).fill(0);
+  ballots.forEach(b=>votes[b[0]]++);
+  return votes;
+}
+
+function bordaCount(ballots, n){
+  const scores=Array(n).fill(0);
+  ballots.forEach(ballot=>{
+    ballot.forEach((cand,pos)=>{ scores[cand]+=(n-1-pos); });
+  });
+  return scores;
+}
+
+function rankedChoice(ballots, n){
+  let active=new Set(Array.from({length:n},(_,i)=>i));
+  let working=ballots.map(b=>[...b]);
+  const eliminated=[];
+  while(active.size>1){
+    const votes={};
+    active.forEach(c=>votes[c]=0);
+    working.forEach(b=>{
+      const top=b.find(c=>active.has(c));
+      if(top!==undefined) votes[top]++;
+    });
+    const total=Object.values(votes).reduce((a,b)=>a+b,0);
+    for(const [c,v] of Object.entries(votes)){
+      if(v>total/2) return{winner:parseInt(c),eliminated,votes};
+    }
+    const minV=Math.min(...Object.values(votes));
+    const losers=Object.entries(votes).filter(([,v])=>v===minV).map(([c])=>parseInt(c));
+    losers.forEach(l=>{active.delete(l);eliminated.push(l);});
+  }
+  return{winner:[...active][0],eliminated,votes:{}};
+}
+
+function condorcet(ballots, n){
+  const mat=Array.from({length:n},()=>Array(n).fill(0));
+  ballots.forEach(b=>{
+    for(let i=0;i<b.length;i++) for(let j=i+1;j<b.length;j++){
+      mat[b[i]][b[j]]++;
+    }
+  });
+  let winner=-1;
+  for(let i=0;i<n;i++){
+    let beats=true;
+    for(let j=0;j<n;j++) if(i!==j&&mat[i][j]<=mat[j][i]){beats=false;break;}
+    if(beats){winner=i;break;}
+  }
+  return{matrix:mat,winner};
+}
+
+// ═══════════════════════════════════════════════════════════
+//  INCLUSION-EXCLUSION
+// ═══════════════════════════════════════════════════════════
+function computeIE(ballots, n){
+  const groups=candidates.map((_,ci)=>ballots.filter(b=>b.indexOf(ci)<2).length);
+  const html=candidates.map((c,i)=>
+    `<div style="display:flex;justify-content:space-between;padding:3px 0">
+       <span style="color:var(--olive)">|Prefer ${c} (top-2)|</span>
+       <span style="color:var(--ink)">${groups[i]} voters</span>
+     </div>`).join('');
+  const overlaps=[];
+  for(let i=0;i<n;i++) for(let j=i+1;j<n;j++){
+    const both=ballots.filter(b=>b.indexOf(i)<2&&b.indexOf(j)<2).length;
+    overlaps.push({i,j,both});
+  }
+  const overlapHtml=overlaps.map(o=>
+    `<div style="display:flex;justify-content:space-between;padding:3px 0">
+       <span style="color:var(--teal)">|${candidates[o.i]} ∩ ${candidates[o.j]}|</span>
+       <span style="color:var(--ink)">${o.both} voters</span>
+     </div>`).join('');
+  const altSum=groups.reduce((a,b)=>a+b,0)-overlaps.reduce((a,o)=>a+o.both,0);
+  document.getElementById('iePanel').innerHTML=`
+    <div style="margin-bottom:.75rem;font-size:12px;color:var(--muted)">Voters ranking each candidate in their top-2:</div>
+    ${html}
+    <div style="margin:.75rem 0;font-size:12px;color:var(--muted)">Pairwise overlaps (∩):</div>
+    ${overlapHtml}
+    <div style="margin-top:.75rem;padding:.75rem;background:var(--bg3);border-radius:8px;border-left:2.5px solid var(--clay)">
+      <div style="color:var(--clay);font-size:12px;margin-bottom:4px">By Inclusion-Exclusion:</div>
+      <div style="color:var(--ink);font-size:13px">|A∪B∪…| ≈ ${altSum} unique voters in top-2 coalition</div>
+      <div style="color:var(--muted2);font-size:11px;margin-top:4px">Sum(|Aᵢ|) − Sum(|Aᵢ∩Aⱼ|) = ${groups.reduce((a,b)=>a+b,0)} − ${overlaps.reduce((a,o)=>a+o.both,0)}</div>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  RELATION ANALYSIS
+// ═══════════════════════════════════════════════════════════
+function computeRelations(ballots, n){
+  const mat=condorcet(ballots,n).matrix;
+  const R=Array.from({length:n},(_,i)=>Array.from({length:n},(_,j)=>{
+    if(i===j) return 0;
+    return mat[i][j]>mat[j][i]?1:0;
+  }));
+  const reflexive=true;
+  const symmetric=R.every((row,i)=>row.every((v,j)=>v===R[j][i]));
+  const transitive=(()=>{
+    for(let i=0;i<n;i++) for(let j=0;j<n;j++) if(R[i][j])
+      for(let k=0;k<n;k++) if(R[j][k]&&!R[i][k]) return false;
+    return true;
+  })();
+  const antisymmetric=R.every((row,i)=>row.every((v,j)=>!(v&&R[j][i])||i===j));
+  const thead=`<tr><th>i\\j</th>${candidates.map(c=>`<th>${c}</th>`).join('')}</tr>`;
+  const tbody=R.map((row,i)=>`<tr><td style="color:var(--olive)">${candidates[i]}</td>${
+    row.map(v=>v===1?`<td class="rel-yes">1</td>`:`<td class="rel-no">0</td>`).join('')
+  }</tr>`).join('');
+  document.getElementById('relTable').innerHTML=`<thead>${thead}</thead><tbody>${tbody}</tbody>`;
+  const props=[
+    ['Reflexive',reflexive,'Every candidate related to itself'],
+    ['Symmetric',symmetric,'If A≻B then B≻A — indicates a tie structure'],
+    ['Antisymmetric',antisymmetric,'If A≻B then ¬(B≻A) — strict preference'],
+    ['Transitive',transitive,'If A≻B and B≻C then A≻C — no Condorcet cycle'],
+  ];
+  document.getElementById('relProps').innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+    ${props.map(([name,val,desc])=>`
+      <div style="padding:10px 14px;background:var(--bg3);border-radius:8px;border-left:2px solid ${val?'var(--olive)':'var(--red)'}">
+        <div style="font-size:13px;color:${val?'var(--olive)':'var(--red)'};font-weight:600">${name}: ${val?'✓ True':'✗ False'}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${desc}</div>
+      </div>`).join('')}
+    </div>`;
+  return {reflexive, symmetric, antisymmetric, transitive};
+}
+
+// ═══════════════════════════════════════════════════════════
+//  FAIRNESS COMPARISON
+// ═══════════════════════════════════════════════════════════
+function computeFairness(ballots, n){
+  const plV=plurality(ballots,n);
+  const bV=bordaCount(ballots,n);
+  const irv=rankedChoice(ballots,n);
+  const cond=condorcet(ballots,n);
+  const plW=plV.indexOf(Math.max(...plV));
+  const bW=bV.indexOf(Math.max(...bV));
+  const irvW=irv.winner;
+  const conW=cond.winner;
+  const methods=[
+    ['Plurality Voting',plW,plV[plW],'high','Simple majority winner. Fast but susceptible to spoiler effect.'],
+    ['Borda Count',bW,bV[bW],'mid','Positional scoring. Rewards consistently high rankings.'],
+    ['Ranked Choice (IRV)',irvW,null,'high','Eliminates last iteratively. Used in AU, Ireland, ranked elections.'],
+    ['Condorcet Method',conW,null,conW>=0?'high':'low',conW>=0?'Beats all others head-to-head. Most mathematically fair.':'No Condorcet winner exists — cycle detected! (Condorcet Paradox)'],
+  ];
+  document.getElementById('fairnessPanel').innerHTML=methods.map(([name,winner,score,cls,desc])=>`
+    <div class="fairness-row">
+      <div>
+        <div class="fairness-method">${name}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${desc}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0;margin-left:16px">
+        <div class="fairness-winner">${winner>=0?candidates[winner]:'⚠ No Winner'}</div>
+        ${score!==null?`<span class="fairness-score score-${cls}" style="margin-top:4px;display:inline-block">${cls==='high'?'Fair':'Moderate'}</span>`:''}
+      </div>
+    </div>`).join('');
+  return{plW,bW,irvW,conW};
+}
+
+// ═══════════════════════════════════════════════════════════
+//  BORDA BAR CHART (NEW)
+// ═══════════════════════════════════════════════════════════
+function renderBordaChart(bScores){
+  const maxS=Math.max(...bScores);
+  const colors=['var(--olive)','var(--teal)','var(--clay)','#7a5a8a','var(--red)','var(--olive2)'];
+  document.getElementById('bordaBars').innerHTML=candidates.map((c,i)=>`
+    <div class="borda-bar-row">
+      <div class="borda-name">${c}</div>
+      <div class="borda-track"><div class="borda-fill" style="width:${Math.round(bScores[i]/maxS*100)}%;background:${colors[i%6]}"></div></div>
+      <div class="borda-score" style="color:${colors[i%6]}">${bScores[i]}</div>
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  GRAPH RENDERING
+// ═══════════════════════════════════════════════════════════
+function drawGraph(ballots, n){
+  const canvas=document.getElementById('graphCanvas');
+  const W=canvas.width=canvas.offsetWidth*window.devicePixelRatio;
+  const H=canvas.height=380*window.devicePixelRatio;
+  const ctx=canvas.getContext('2d');
+  ctx.scale(window.devicePixelRatio,window.devicePixelRatio);
+  const w=canvas.offsetWidth,h=380;
+  ctx.clearRect(0,0,w,h);
+  // Light bg to match theme
+  ctx.fillStyle='#edeae0';ctx.fillRect(0,0,w,h);
+
+  const cx=w/2,cy=h/2,R=Math.min(w,h)*0.32;
+  const pos=candidates.map((_,i)=>{
+    const a=((2*Math.PI*i)/n)-Math.PI/2;
+    return{x:cx+R*Math.cos(a),y:cy+R*Math.sin(a)};
+  });
+
+  const mat=condorcet(ballots,n).matrix;
+  const maxW=Math.max(...mat.flat().filter(Boolean));
+
+  for(let i=0;i<n;i++) for(let j=0;j<n;j++){
+    if(i===j||mat[i][j]===0) continue;
+    const beats=mat[i][j]>mat[j][i];
+    if(!beats) continue;
+    const w_norm=mat[i][j]/maxW;
+    const p1=pos[i],p2=pos[j];
+    const dx=p2.x-p1.x,dy=p2.y-p1.y,dist=Math.hypot(dx,dy);
+    const r=22;
+    const sx=p1.x+dx/dist*r,sy=p1.y+dy/dist*r;
+    const ex=p2.x-dx/dist*r,ey=p2.y-dy/dist*r;
+    ctx.beginPath();ctx.moveTo(sx,sy);ctx.lineTo(ex,ey);
+    const col=w_norm>0.65?`rgba(184,64,64,${0.3+w_norm*0.6})`:w_norm>0.35?`rgba(58,112,104,${0.3+w_norm*0.6})`:`rgba(90,100,55,${0.3+w_norm*0.6})`;
+    ctx.strokeStyle=col;ctx.lineWidth=1+w_norm*3;ctx.stroke();
+    const ang=Math.atan2(ey-sy,ex-sx);
+    ctx.beginPath();
+    ctx.moveTo(ex,ey);
+    ctx.lineTo(ex-10*Math.cos(ang-0.4),ey-10*Math.sin(ang-0.4));
+    ctx.lineTo(ex-10*Math.cos(ang+0.4),ey-10*Math.sin(ang+0.4));
+    ctx.closePath();
+    ctx.fillStyle=col;ctx.fill();
+    const mx=(sx+ex)/2,my=(sy+ey)/2;
+    ctx.fillStyle='rgba(250,249,245,0.85)';ctx.beginPath();ctx.arc(mx,my,11,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#1e2010';ctx.font='bold 10px IBM Plex Mono,monospace';
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(mat[i][j],mx,my);
+  }
+
+  const nodeColors=['#5a6437','#3a7068','#b07240','#7a5a8a','#b84040','#6e7a42'];
+  pos.forEach(({x,y},i)=>{
+    const grd=ctx.createRadialGradient(x,y,0,x,y,32);
+    const col=nodeColors[i%6];
+    grd.addColorStop(0,col+'33');grd.addColorStop(1,'transparent');
+    ctx.beginPath();ctx.arc(x,y,32,0,Math.PI*2);ctx.fillStyle=grd;ctx.fill();
+    ctx.beginPath();ctx.arc(x,y,22,0,Math.PI*2);
+    ctx.fillStyle=col+'22';ctx.fill();
+    ctx.strokeStyle=col;ctx.lineWidth=2;ctx.stroke();
+    ctx.fillStyle=col;ctx.font='bold 12px Playfair Display,serif';
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(candidates[i].slice(0,1),x,y);
+    ctx.fillStyle='#1e2010';ctx.font='11px IBM Plex Mono,monospace';
+    ctx.fillText(candidates[i],x,y+34);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  PERMUTATIONS
+// ═══════════════════════════════════════════════════════════
+function renderPerms(){
+  const perms=permutations(candidates);
+  document.getElementById('permCount').textContent=perms.length;
+  document.getElementById('permGrid').innerHTML=perms.map((p,i)=>
+    `<div class="perm-cell" style="animation-delay:${i*18}ms">${p.map(c=>c[0]).join(' ≻ ')}</div>`
+  ).join('');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  HISTORY
+// ═══════════════════════════════════════════════════════════
+function addToHistory(run){
+  runHistory.unshift(run);
+  updateHistoryPanel();
+}
+
+function updateHistoryPanel(){
+  document.getElementById('histCount').textContent=`(${runHistory.length} run${runHistory.length!==1?'s':''})`;
+  const last3=runHistory.slice(0,3);
+  if(!last3.length){document.getElementById('historyTable').innerHTML='<div class="no-history">No runs yet.</div>';return;}
+  document.getElementById('historyTable').innerHTML=`
+    <table class="history-table">
+      <thead><tr><th>#</th><th>Voters</th><th>Cands</th><th>Plurality</th><th>Borda</th><th>Seed</th></tr></thead>
+      <tbody>${last3.map((r,i)=>`
+        <tr>
+          <td>#${runHistory.length-i}</td>
+          <td>${r.voters}</td>
+          <td>${r.cands}</td>
+          <td class="winner-cell">${r.plWinner}</td>
+          <td class="winner-cell">${r.bordaWinner}</td>
+          <td style="font-size:11px">${r.seed}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+function clearHistory(){
+  if(!runHistory.length) return;
+  if(confirm('Clear all run history?')){
+    runHistory=[];
+    updateHistoryPanel();
+    showNotif('History cleared');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  MAIN SIMULATION
+// ═══════════════════════════════════════════════════════════
+function runSimulation(){
+  numVoters=parseInt(document.getElementById('numVoters').value)||50;
+  const n=candidates.length;
+
+  ballots=generateBallots(numVoters, candidates);
+
+  const log=document.getElementById('logArea');
+  function addLog(key,val,col='var(--muted)'){
+    log.innerHTML+=`<div class="log-line"><span class="log-key">[${key}]</span><span class="log-val" style="color:${col}">${val}</span></div>`;
+    log.scrollTop=log.scrollHeight;
+  }
+  log.innerHTML='';
+
+  addLog('INIT',`Simulation started — ${numVoters} voters, ${n} candidates, seed:${lastSeed}`,'var(--olive)');
+  addLog('CANDS',candidates.join(', '));
+  addLog('BIAS',candidates.map((c,i)=>`${c}:${biasWeights[i].toFixed(1)}`).join(' | '));
+
+  const permsN=factorial(n);
+  addLog('PERMS',`P(${n},${n}) = ${n}! = ${permsN} possible orderings`,'var(--teal)');
+  renderPerms();
+
+  const plVotes=plurality(ballots,n);
+  const plW=plVotes.indexOf(Math.max(...plVotes));
+  addLog('PLURALITY',`Winner: ${candidates[plW]} (${plVotes[plW]} first-choice votes)`,'var(--olive)');
+
+  const bScores=bordaCount(ballots,n);
+  const bW=bScores.indexOf(Math.max(...bScores));
+  addLog('BORDA',`Winner: ${candidates[bW]} (score: ${bScores[bW]})`,'var(--clay)');
+
+  const irv=rankedChoice(ballots,n);
+  addLog('IRV',`Winner: ${candidates[irv.winner]} (eliminated: ${irv.eliminated.map(i=>candidates[i]).join(', ')||'none'})`,'var(--teal)');
+
+  const cond=condorcet(ballots,n);
+  addLog('CONDORCET',cond.winner>=0?`Winner: ${candidates[cond.winner]} (beats all head-to-head)`:'No Condorcet winner — cycle detected!',cond.winner>=0?'var(--olive)':'var(--red)');
+
+  // Metrics
+  document.getElementById('m-voters').textContent=numVoters;
+  document.getElementById('m-cands').textContent=n;
+  document.getElementById('m-perms').textContent=permsN;
+  document.getElementById('m-winner').textContent=candidates[plW];
+
+  // Scenario badge
+  const allSame=new Set([plW,bW,irv.winner,cond.winner]).size<=1;
+  const hasCycle=cond.winner<0;
+  let badge='';
+  if(hasCycle) badge=`<div class="scenario-badge">⚠ Condorcet Paradox Detected!</div>`;
+  else if(allSame) badge=`<div class="scenario-badge">✓ All methods agree: ${candidates[plW]} wins</div>`;
+  else badge=`<div class="scenario-badge">⚖ Winner varies by method</div>`;
+  document.getElementById('scenarioBadge').innerHTML=badge;
+
+  // Vote distribution bars
+  const maxV=Math.max(...plVotes);
+  const colors=['var(--olive)','var(--teal)','var(--clay)','#7a5a8a','var(--red)','var(--olive2)'];
+  document.getElementById('voteDistBars').innerHTML=candidates.map((c,i)=>`
+    <div class="winner-bar">
+      <div class="wbar-name">${c}</div>
+      <div class="wbar-track"><div class="wbar-fill" style="width:${Math.round(plVotes[i]/maxV*100)}%;background:${colors[i%6]}"></div></div>
+      <div class="wbar-val">${plVotes[i]}</div>
+    </div>`).join('');
+  document.getElementById('exportBars').style.display='flex';
+
+  // Borda chart
+  renderBordaChart(bScores);
+
+  // Graph
+  drawGraph(ballots, n);
+  document.getElementById('exportGraph').style.display='flex';
+
+  // Relations
+  const relProps=computeRelations(ballots, n);
+
+  // Fairness
+  computeFairness(ballots, n);
+
+  // IE
+  computeIE(ballots, n);
+
+  // Results summary
+  document.getElementById('rs-total').textContent=numVoters;
+  document.getElementById('rs-perms').textContent=permsN;
+  document.getElementById('rs-winner').textContent=candidates[plW];
+  document.getElementById('rs-borda').textContent=candidates[bW];
+
+  // Results detail
+  document.getElementById('resultsDetail').innerHTML=`
+    <div style="width:100%">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem">
+        ${candidates.map((c,i)=>`
+          <div style="padding:1rem;background:var(--bg3);border-radius:10px;border:1px solid var(--border)">
+            <div style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:${colors[i%6]};margin-bottom:.5rem">${c}</div>
+            <div style="font-size:12px;color:var(--muted)">Plurality votes: <span style="color:${colors[i%6]};font-weight:600">${plVotes[i]}</span></div>
+            <div style="font-size:12px;color:var(--muted)">Borda score: <span style="color:${colors[i%6]};font-weight:600">${bScores[i]}</span></div>
+            <div style="font-size:12px;color:var(--muted)">Win %: <span style="color:${colors[i%6]};font-weight:600">${(plVotes[i]/numVoters*100).toFixed(1)}%</span></div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+  document.getElementById('resultsExportBar').style.display='flex';
+
+  // Store last results
+  lastResults={candidates:[...candidates],numVoters,seed:lastSeed,plVotes,bScores,
+    plW,bW,irvW:irv.winner,conW:cond.winner,permsN,biasWeights:[...biasWeights]};
+
+  // Add to history
+  addToHistory({voters:numVoters,cands:n,plWinner:candidates[plW],
+    bordaWinner:candidates[bW],seed:lastSeed,ts:new Date().toLocaleTimeString()});
+
+  addLog('DONE',`Analysis complete — ${new Date().toLocaleTimeString()}`,'var(--olive)');
+  simRan=true;
+  showNotif('✓ Simulation complete!');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  TAB SWITCHING
+// ═══════════════════════════════════════════════════════════
+function showTab(id, btn){
+  document.querySelectorAll('[id^="tab-"]').forEach(el=>el.style.display='none');
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+id).style.display='block';
+  btn.classList.add('active');
+  if(id==='graph'&&simRan){
+    setTimeout(()=>drawGraph(ballots, candidates.length),50);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  BALLOT MODAL
+// ═══════════════════════════════════════════════════════════
+function openBallotModal(){
+  if(!simRan){showNotif('Run simulation first!');return;}
+  const shown=ballots.slice(0,40);
+  document.getElementById('ballotGrid').innerHTML=shown.map((b,vi)=>`
+    <div class="ballot-card">
+      <div class="ballot-rank">Voter #${vi+1}</div>
+      ${b.map((ci,rank)=>`<div><span style="color:var(--muted2);font-size:10px">${rank+1}.</span> <span class="ballot-name">${candidates[ci]}</span></div>`).join('')}
+    </div>`).join('');
+  document.getElementById('ballotModal').classList.add('open');
+}
+
+function openHistoryModal(){
+  if(!runHistory.length){showNotif('No history yet.');return;}
+  document.getElementById('fullHistoryTable').innerHTML=`
+    <table class="history-table">
+      <thead><tr><th>#</th><th>Time</th><th>Voters</th><th>Cands</th><th>Plurality</th><th>Borda</th><th>Seed</th></tr></thead>
+      <tbody>${runHistory.map((r,i)=>`
+        <tr>
+          <td>#${runHistory.length-i}</td>
+          <td style="font-size:11px">${r.ts}</td>
+          <td>${r.voters}</td>
+          <td>${r.cands}</td>
+          <td class="winner-cell">${r.plWinner}</td>
+          <td class="winner-cell">${r.bordaWinner}</td>
+          <td style="font-size:11px">${r.seed}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+  document.getElementById('historyModal').classList.add('open');
+}
+
+function closeModal(id){
+  document.getElementById(id).classList.remove('open');
+}
+document.querySelectorAll('.modal-overlay').forEach(m=>{
+  m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');});
+});
+
+// ═══════════════════════════════════════════════════════════
+//  EXPORT FUNCTIONS
+// ═══════════════════════════════════════════════════════════
+function exportVoteDist(){
+  if(!lastResults)return;
+  const rows=['Candidate,Plurality Votes,Win %,Borda Score'];
+  lastResults.candidates.forEach((c,i)=>{
+    rows.push(`${c},${lastResults.plVotes[i]},${(lastResults.plVotes[i]/lastResults.numVoters*100).toFixed(2)},${lastResults.bScores[i]}`);
+  });
+  downloadFile('vote_distribution.csv',rows.join('\n'),'text/csv');
+  showNotif('Vote data exported!');
+}
+
+function copyVoteData(){
+  if(!lastResults)return;
+  const txt=lastResults.candidates.map((c,i)=>`${c}: ${lastResults.plVotes[i]} votes (${(lastResults.plVotes[i]/lastResults.numVoters*100).toFixed(1)}%) | Borda: ${lastResults.bScores[i]}`).join('\n');
+  navigator.clipboard.writeText(txt).then(()=>showNotif('Copied to clipboard!'));
+}
+
+function exportHistory(){
+  if(!runHistory.length){showNotif('No history to export.');return;}
+  const rows=['Run,Time,Voters,Candidates,Plurality Winner,Borda Winner,Seed'];
+  runHistory.forEach((r,i)=>rows.push(`${runHistory.length-i},${r.ts},${r.voters},${r.cands},${r.plWinner},${r.bordaWinner},${r.seed}`));
+  downloadFile('run_history.csv',rows.join('\n'),'text/csv');
+  showNotif('History exported!');
+}
+
+function exportResultsJSON(){
+  if(!lastResults)return;
+  downloadFile('election_results.json',JSON.stringify(lastResults,null,2),'application/json');
+  showNotif('Results exported as JSON!');
+}
+
+function exportResultsCSV(){
+  if(!lastResults)return;
+  const rows=['Field,Value',`Voters,${lastResults.numVoters}`,`Candidates,${lastResults.candidates.join('; ')}`,
+    `Seed,${lastResults.seed}`,`Permutations,${lastResults.permsN}`,
+    `Plurality Winner,${lastResults.candidates[lastResults.plW]}`,
+    `Borda Winner,${lastResults.candidates[lastResults.bW]}`,
+    `IRV Winner,${lastResults.candidates[lastResults.irvW]}`,
+    `Condorcet Winner,${lastResults.conW>=0?lastResults.candidates[lastResults.conW]:'None (Cycle)'}`,
+    ...lastResults.candidates.map((c,i)=>`${c} Plurality Votes,${lastResults.plVotes[i]}`),
+    ...lastResults.candidates.map((c,i)=>`${c} Borda Score,${lastResults.bScores[i]}`)];
+  downloadFile('election_results.csv',rows.join('\n'),'text/csv');
+  showNotif('Results exported as CSV!');
+}
+
+function exportGraph(){
+  const canvas=document.getElementById('graphCanvas');
+  const link=document.createElement('a');
+  link.download='preference_graph.png';
+  link.href=canvas.toDataURL('image/png');
+  link.click();
+  showNotif('Graph saved as PNG!');
+}
+
+function exportLog(){
+  const log=document.getElementById('logArea');
+  const text=Array.from(log.querySelectorAll('.log-line')).map(l=>`${l.querySelector('.log-key').textContent} ${l.querySelector('.log-val').textContent}`).join('\n');
+  downloadFile('computation_log.txt',text,'text/plain');
+  showNotif('Log exported!');
+}
+
+function copyLog(){
+  const log=document.getElementById('logArea');
+  const text=Array.from(log.querySelectorAll('.log-line')).map(l=>`${l.querySelector('.log-key').textContent} ${l.querySelector('.log-val').textContent}`).join('\n');
+  navigator.clipboard.writeText(text).then(()=>showNotif('Log copied!'));
+}
+
+function clearLog(){
+  document.getElementById('logArea').innerHTML='<div class="log-line"><span class="log-key">[INIT]</span><span class="log-val">Log cleared.</span></div>';
+}
+
+function printReport(){
+  window.print();
+}
+
+function downloadFile(name, content, type){
+  const blob=new Blob([content],{type});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=name;a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  SCROLL REVEAL
+// ═══════════════════════════════════════════════════════════
+function setupReveal(){
+  const obs=new IntersectionObserver(entries=>{
+    entries.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible')});
+  },{threshold:0.12});
+  document.querySelectorAll('.reveal').forEach(el=>obs.observe(el));
+}
+
+window.addEventListener('resize',()=>{
+  if(simRan&&document.getElementById('tab-graph').style.display!=='none'){
+    drawGraph(ballots,candidates.length);
+  }
+});
+
+init();
+</script>
+</body>
+</html>
