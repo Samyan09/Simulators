@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hill Cipher</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Bebas+Neue&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c10;
+    --panel: #0f1318;
+    --border: #1e2a38;
+    --accent: #00e5ff;
+    --accent2: #ff4081;
+    --gold: #ffd740;
+    --text: #c8d6e5;
+    --dim: #4a5568;
+    --grid: rgba(0,229,255,0.04);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  .scanline {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none; z-index: 100;
+    background: repeating-linear-gradient(
+      0deg, transparent, transparent 2px,
+      rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px
+    );
+  }
+
+  header {
+    text-align: center;
+    padding: 48px 20px 24px;
+    position: relative;
+  }
+
+  header::after {
+    content: '';
+    display: block;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    margin-top: 24px;
+  }
+
+  .title-label {
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--accent);
+    font-size: 11px;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    opacity: 0.7;
+  }
+
+  h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(52px, 10vw, 96px);
+    letter-spacing: 8px;
+    color: #fff;
+    text-shadow: 0 0 40px rgba(0,229,255,0.3), 0 0 80px rgba(0,229,255,0.1);
+    line-height: 1;
+  }
+
+  h1 span { color: var(--accent); }
+
+  .subtitle {
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--dim);
+    margin-top: 8px;
+  }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 20px 60px;
+  }
+
+  /* Theory Section */
+  .theory {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 40px;
+  }
+
+  @media(max-width:720px){ .theory { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute; top: 0; left: 0;
+    width: 3px; height: 100%;
+    background: var(--accent);
+  }
+
+  .card.accent2::before { background: var(--accent2); }
+  .card.gold::before { background: var(--gold); }
+  .card.full { grid-column: 1 / -1; }
+
+  .card-label {
+    font-size: 9px;
+    letter-spacing: 4px;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    opacity: 0.8;
+  }
+  .card.accent2 .card-label { color: var(--accent2); }
+  .card.gold .card-label { color: var(--gold); }
+
+  .card h3 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 3px;
+    margin-bottom: 10px;
+    color: #fff;
+  }
+
+  .card p, .card li {
+    font-size: 12px;
+    line-height: 1.8;
+    color: var(--text);
+    opacity: 0.85;
+  }
+
+  .card ul { padding-left: 16px; }
+  .card li { margin-bottom: 4px; }
+
+  .formula {
+    background: rgba(0,229,255,0.05);
+    border: 1px solid rgba(0,229,255,0.15);
+    border-radius: 4px;
+    padding: 12px 16px;
+    margin-top: 12px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    color: var(--accent);
+    text-align: center;
+  }
+
+  /* Matrix Key Input */
+  .section-head {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    letter-spacing: 4px;
+    color: #fff;
+    margin: 40px 0 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .section-head::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .num { color: var(--accent); font-size: 14px; }
+
+  /* Key Matrix */
+  .key-section {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 24px;
+    align-items: start;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 24px;
+    margin-bottom: 16px;
+  }
+
+  @media(max-width:600px){ .key-section { grid-template-columns: 1fr; } }
+
+  .matrix-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .matrix-label {
+    font-size: 9px;
+    letter-spacing: 3px;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+
+  .matrix-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 60px);
+    gap: 6px;
+    position: relative;
+    padding: 8px;
+  }
+
+  .matrix-grid::before, .matrix-grid::after {
+    content: '';
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 3px;
+    border-top: 2px solid var(--accent);
+    border-bottom: 2px solid var(--accent);
+  }
+
+  .matrix-grid::before { left: 0; border-left: 2px solid var(--accent); }
+  .matrix-grid::after { right: 0; border-right: 2px solid var(--accent); }
+
+  .matrix-grid input {
+    width: 60px; height: 60px;
+    background: rgba(0,229,255,0.05);
+    border: 1px solid rgba(0,229,255,0.2);
+    border-radius: 3px;
+    color: var(--accent);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 22px;
+    text-align: center;
+    outline: none;
+    transition: all 0.2s;
+  }
+
+  .matrix-grid input:focus {
+    border-color: var(--accent);
+    background: rgba(0,229,255,0.1);
+    box-shadow: 0 0 12px rgba(0,229,255,0.2);
+  }
+
+  .key-info { display: flex; flex-direction: column; gap: 12px; }
+
+  .det-display {
+    background: rgba(255,215,64,0.05);
+    border: 1px solid rgba(255,215,64,0.2);
+    border-radius: 4px;
+    padding: 12px 16px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+  }
+
+  .det-display .det-val { color: var(--gold); font-size: 18px; font-weight: 700; }
+  .det-display .det-info { color: var(--dim); margin-top: 4px; font-size: 11px; }
+
+  .presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .preset-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    padding: 6px 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 1px;
+  }
+
+  .preset-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(0,229,255,0.05);
+  }
+
+  /* Cipher Panel */
+  .cipher-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  @media(max-width:600px){ .cipher-grid { grid-template-columns: 1fr; } }
+
+  .input-group { display: flex; flex-direction: column; gap: 8px; }
+
+  .input-group label {
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--dim);
+  }
+
+  textarea {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: #fff;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 14px;
+    padding: 16px;
+    resize: vertical;
+    min-height: 120px;
+    outline: none;
+    transition: border-color 0.2s;
+    letter-spacing: 2px;
+  }
+
+  textarea:focus { border-color: var(--accent); }
+
+  .btn-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+
+  .btn {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 3px;
+    padding: 14px 32px;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn-encrypt {
+    background: var(--accent);
+    color: #000;
+  }
+
+  .btn-encrypt:hover {
+    box-shadow: 0 0 24px rgba(0,229,255,0.5);
+    transform: translateY(-1px);
+  }
+
+  .btn-decrypt {
+    background: transparent;
+    color: var(--accent2);
+    border: 2px solid var(--accent2);
+  }
+
+  .btn-decrypt:hover {
+    background: var(--accent2);
+    color: #fff;
+    box-shadow: 0 0 24px rgba(255,64,129,0.4);
+    transform: translateY(-1px);
+  }
+
+  .btn-clear {
+    background: transparent;
+    color: var(--dim);
+    border: 1px solid var(--border);
+    font-size: 14px;
+    padding: 14px 20px;
+    letter-spacing: 2px;
+    font-family: 'Space Mono', monospace;
+  }
+
+  .btn-clear:hover { border-color: var(--dim); color: var(--text); }
+
+  /* Steps visualizer */
+  .steps-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 24px;
+    min-height: 80px;
+  }
+
+  .steps-panel .step {
+    border-left: 2px solid var(--border);
+    padding: 8px 16px;
+    margin-bottom: 12px;
+    font-size: 12px;
+    line-height: 1.8;
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--text);
+    animation: fadeIn 0.3s ease;
+  }
+
+  .step.active { border-left-color: var(--accent); color: #fff; }
+  .step .step-num { color: var(--accent); margin-right: 8px; }
+  .step .highlight { color: var(--gold); }
+  .step .result { color: var(--accent2); }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: none; } }
+
+  .error-msg {
+    background: rgba(255,64,129,0.1);
+    border: 1px solid rgba(255,64,129,0.3);
+    border-radius: 4px;
+    padding: 12px 16px;
+    color: var(--accent2);
+    font-size: 12px;
+    font-family: 'Share Tech Mono', monospace;
+    margin-bottom: 12px;
+  }
+
+  /* Alphabet reference */
+  .alpha-ref {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 8px;
+  }
+
+  .alpha-cell {
+    width: 36px;
+    height: 36px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    gap: 1px;
+  }
+
+  .alpha-cell .letter { color: #fff; font-family: 'Bebas Neue', sans-serif; font-size: 13px; }
+  .alpha-cell .num { color: var(--dim); font-family: 'Share Tech Mono', monospace; font-size: 9px; }
+
+  .empty-state {
+    color: var(--dim);
+    font-size: 12px;
+    font-family: 'Share Tech Mono', monospace;
+    padding: 16px 0;
+  }
+
+  /* Inverse matrix display */
+  .inv-matrix-display {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .inv-matrix-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 48px);
+    gap: 4px;
+    position: relative;
+    padding: 6px;
+  }
+
+  .inv-matrix-grid::before, .inv-matrix-grid::after {
+    content: '';
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 2px;
+    border-top: 1px solid var(--accent2);
+    border-bottom: 1px solid var(--accent2);
+  }
+
+  .inv-matrix-grid::before { left: 0; border-left: 1px solid var(--accent2); }
+  .inv-matrix-grid::after { right: 0; border-right: 1px solid var(--accent2); }
+
+  .inv-cell {
+    width: 48px; height: 40px;
+    background: rgba(255,64,129,0.05);
+    border: 1px solid rgba(255,64,129,0.15);
+    border-radius: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent2);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 14px;
+  }
+</style>
+</head>
+<body>
+<div class="scanline"></div>
+
+<header>
+  <div class="title-label">Classical Cryptography</div>
+  <h1>HILL <span>CIPHER</span></h1>
+  <div class="subtitle">Matrix-Based Polygraphic Substitution Cipher · Lester S. Hill, 1929</div>
+</header>
+
+<div class="container">
+
+  <!-- Theory -->
+  <div class="theory">
+    <div class="card">
+      <div class="card-label">How It Works</div>
+      <h3>The Concept</h3>
+      <p>Hill Cipher encrypts text by treating blocks of letters as vectors and multiplying them with a key matrix. Each group of n letters is encoded together using linear algebra modulo 26.</p>
+      <div class="formula">C = (K × P) mod 26</div>
+    </div>
+    <div class="card accent2">
+      <div class="card-label">Decryption</div>
+      <h3>Reverse Process</h3>
+      <p>To decrypt, we find the modular inverse of the key matrix and multiply the ciphertext vector by it. The inverse only exists when gcd(det(K), 26) = 1.</p>
+      <div class="formula">P = (K⁻¹ × C) mod 26</div>
+    </div>
+    <div class="card gold full">
+      <div class="card-label">Requirements</div>
+      <h3>Valid Key Matrix</h3>
+      <ul>
+        <li>The determinant of the key matrix must not be 0 mod 26</li>
+        <li>The determinant must be coprime with 26 (i.e. gcd(det, 26) = 1)</li>
+        <li>Valid determinants mod 26: 1, 3, 5, 7, 9, 11, 15, 17, 19, 21, 23, 25</li>
+        <li>Only alphabetic characters are processed; spaces & punctuation are removed</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Key Matrix -->
+  <div class="section-head"><span class="num">01</span> KEY MATRIX</div>
+  <div class="key-section">
+    <div class="matrix-wrap">
+      <div class="matrix-label">Key Matrix K</div>
+      <div class="matrix-grid">
+        <input type="number" id="k00" value="3" min="0" max="25">
+        <input type="number" id="k01" value="3" min="0" max="25">
+        <input type="number" id="k10" value="2" min="0" max="25">
+        <input type="number" id="k11" value="5" min="0" max="25">
+      </div>
+    </div>
+
+    <div class="key-info">
+      <div class="det-display" id="det-display">
+        <div>Determinant: <span class="det-val" id="det-val">—</span></div>
+        <div class="det-info" id="det-info">Enter matrix values to validate</div>
+      </div>
+
+      <div id="inv-display"></div>
+
+      <div>
+        <div style="font-size:10px;letter-spacing:2px;color:var(--dim);margin-bottom:8px;">PRESET MATRICES</div>
+        <div class="presets">
+          <button class="preset-btn" onclick="setPreset(3,3,2,5)">[[3,3],[2,5]]</button>
+          <button class="preset-btn" onclick="setPreset(6,24,1,13)">[[6,24],[1,13]]</button>
+          <button class="preset-btn" onclick="setPreset(17,17,5,21)">[[17,17],[5,21]]</button>
+          <button class="preset-btn" onclick="setPreset(9,4,5,7)">[[9,4],[5,7]]</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cipher -->
+  <div class="section-head"><span class="num">02</span> ENCRYPT / DECRYPT</div>
+  <div class="cipher-grid">
+    <div class="input-group">
+      <label>Plaintext Input</label>
+      <textarea id="plaintext" placeholder="Type your message here...&#10;Only A-Z letters used"></textarea>
+    </div>
+    <div class="input-group">
+      <label>Ciphertext Output</label>
+      <textarea id="ciphertext" placeholder="Result will appear here...&#10;(also editable for decryption)"></textarea>
+    </div>
+  </div>
+
+  <div id="error-area"></div>
+
+  <div class="btn-row">
+    <button class="btn btn-encrypt" onclick="encrypt()">ENCRYPT →</button>
+    <button class="btn btn-decrypt" onclick="decrypt()">← DECRYPT</button>
+    <button class="btn btn-clear" onclick="clearAll()">CLEAR</button>
+  </div>
+
+  <!-- Steps -->
+  <div class="section-head"><span class="num">03</span> STEP-BY-STEP TRACE</div>
+  <div class="steps-panel" id="steps-panel">
+    <div class="empty-state">// Perform an encryption or decryption to see the detailed steps here</div>
+  </div>
+
+  <!-- Alphabet Reference -->
+  <div class="section-head"><span class="num">04</span> ALPHABET REFERENCE</div>
+  <div class="card">
+    <div class="card-label">A=0 · B=1 · ... · Z=25</div>
+    <div class="alpha-ref" id="alpha-ref"></div>
+  </div>
+
+</div>
+
+<script>
+// Alphabet reference
+const alphaRef = document.getElementById('alpha-ref');
+for (let i = 0; i < 26; i++) {
+  const c = document.createElement('div');
+  c.className = 'alpha-cell';
+  c.innerHTML = `<span class="letter">${String.fromCharCode(65+i)}</span><span class="num">${i}</span>`;
+  alphaRef.appendChild(c);
+}
+
+// Matrix utils
+function getMatrix() {
+  return [
+    [parseInt(document.getElementById('k00').value)||0, parseInt(document.getElementById('k01').value)||0],
+    [parseInt(document.getElementById('k10').value)||0, parseInt(document.getElementById('k11').value)||0]
+  ];
+}
+
+function det(K) {
+  return K[0][0]*K[1][1] - K[0][1]*K[1][0];
+}
+
+function mod26(n) {
+  return ((n % 26) + 26) % 26;
+}
+
+function gcd(a, b) {
+  a = Math.abs(a); b = Math.abs(b);
+  while(b) { [a,b] = [b, a%b]; }
+  return a;
+}
+
+function modInverse(a, m) {
+  a = mod26(a);
+  for (let x = 1; x < m; x++) {
+    if ((a * x) % m === 1) return x;
+  }
+  return null;
+}
+
+function matrixInverseMod26(K) {
+  const d = det(K);
+  const dMod = mod26(d);
+  const dInv = modInverse(dMod, 26);
+  if (dInv === null) return null;
+  // Adjugate of 2x2
+  return [
+    [mod26(dInv * K[1][1]), mod26(dInv * -K[0][1])],
+    [mod26(dInv * -K[1][0]), mod26(dInv * K[0][0])]
+  ];
+}
+
+function validateMatrix() {
+  const K = getMatrix();
+  const d = det(K);
+  const dMod = mod26(d);
+  const g = gcd(dMod, 26);
+  const valid = g === 1 && dMod !== 0;
+  
+  document.getElementById('det-val').textContent = `${d} ≡ ${dMod} (mod 26)`;
+  document.getElementById('det-info').textContent = valid
+    ? `✓ Valid — gcd(${dMod}, 26) = 1`
+    : `✗ Invalid — gcd(${dMod}, 26) = ${g} (det must be coprime to 26)`;
+  document.getElementById('det-display').style.borderColor = valid ? 'rgba(0,229,255,0.3)' : 'rgba(255,64,129,0.3)';
+  document.getElementById('det-val').style.color = valid ? 'var(--gold)' : 'var(--accent2)';
+
+  // Show inverse
+  const invDiv = document.getElementById('inv-display');
+  if (valid) {
+    const inv = matrixInverseMod26(K);
+    invDiv.innerHTML = `
+      <div style="font-size:10px;letter-spacing:2px;color:var(--dim);margin-bottom:8px;">INVERSE KEY K⁻¹ (mod 26)</div>
+      <div class="inv-matrix-display">
+        <div class="inv-matrix-grid">
+          <div class="inv-cell">${inv[0][0]}</div><div class="inv-cell">${inv[0][1]}</div>
+          <div class="inv-cell">${inv[1][0]}</div><div class="inv-cell">${inv[1][1]}</div>
+        </div>
+      </div>`;
+  } else {
+    invDiv.innerHTML = `<div style="font-size:11px;color:var(--accent2);font-family:'Share Tech Mono',monospace;">Inverse does not exist for this matrix.</div>`;
+  }
+
+  return { valid, K };
+}
+
+// Listen to matrix changes
+['k00','k01','k10','k11'].forEach(id => {
+  document.getElementById(id).addEventListener('input', validateMatrix);
+});
+validateMatrix();
+
+function setPreset(a,b,c,d) {
+  document.getElementById('k00').value = a;
+  document.getElementById('k01').value = b;
+  document.getElementById('k10').value = c;
+  document.getElementById('k11').value = d;
+  validateMatrix();
+}
+
+function sanitize(text) {
+  return text.toUpperCase().replace(/[^A-Z]/g,'');
+}
+
+function pad(text) {
+  // Pad with X if odd length
+  if (text.length % 2 !== 0) text += 'X';
+  return text;
+}
+
+function showError(msg) {
+  document.getElementById('error-area').innerHTML = `<div class="error-msg">⚠ ${msg}</div>`;
+}
+
+function clearError() {
+  document.getElementById('error-area').innerHTML = '';
+}
+
+function setSteps(steps) {
+  const panel = document.getElementById('steps-panel');
+  panel.innerHTML = steps.map((s, i) => `
+    <div class="step active" style="animation-delay:${i*0.05}s">
+      <span class="step-num">[${String(i+1).padStart(2,'0')}]</span> ${s}
+    </div>`).join('');
+}
+
+function processBlocks(text, K, steps) {
+  let result = '';
+  const blocks = [];
+  const blockResults = [];
+  
+  for (let i = 0; i < text.length; i += 2) {
+    const p1 = text.charCodeAt(i) - 65;
+    const p2 = text.charCodeAt(i+1) - 65;
+    
+    const c1 = mod26(K[0][0]*p1 + K[0][1]*p2);
+    const c2 = mod26(K[1][0]*p1 + K[1][1]*p2);
+    
+    blocks.push([p1, p2, String.fromCharCode(65+p1), String.fromCharCode(65+p2)]);
+    blockResults.push([c1, c2, String.fromCharCode(65+c1), String.fromCharCode(65+c2)]);
+    
+    result += String.fromCharCode(65+c1) + String.fromCharCode(65+c2);
+  }
+  
+  // Add block steps (show first 4 to keep it readable)
+  const showCount = Math.min(blocks.length, 4);
+  for (let i = 0; i < showCount; i++) {
+    const [p1,p2,pl1,pl2] = blocks[i];
+    const [c1,c2,cl1,cl2] = blockResults[i];
+    steps.push(
+      `Block <span class="highlight">${pl1}${pl2}</span> → [${p1},${p2}] · Matrix → [${K[0][0]}×${p1}+${K[0][1]}×${p2}, ${K[1][0]}×${p1}+${K[1][1]}×${p2}] mod 26 = [<span class="result">${c1},${c2}</span>] → <span class="result">${cl1}${cl2}</span>`
+    );
+  }
+  if (blocks.length > 4) steps.push(`... and ${blocks.length - 4} more block(s) processed`);
+  
+  return result;
+}
+
+function encrypt() {
+  clearError();
+  const { valid, K } = validateMatrix();
+  if (!valid) { showError('Invalid key matrix — determinant must be coprime with 26.'); return; }
+  
+  let raw = document.getElementById('plaintext').value;
+  let clean = sanitize(raw);
+  if (!clean) { showError('Please enter some text to encrypt.'); return; }
+  
+  const padded = pad(clean);
+  const steps = [];
+  
+  steps.push(`Original input: <span class="highlight">"${raw.substring(0,40)}${raw.length>40?'...':''}"</span>`);
+  steps.push(`After sanitizing (A-Z only): <span class="highlight">${clean}</span>`);
+  if (padded !== clean) steps.push(`Padded to even length with X: <span class="highlight">${padded}</span>`);
+  steps.push(`Split into 2-letter blocks: <span class="highlight">${padded.match(/.{2}/g).join(' ')}</span>`);
+  steps.push(`Using key matrix K = [[${K[0][0]},${K[0][1]}],[${K[1][0]},${K[1][1]}]] — C = (K × P) mod 26`);
+  
+  const cipher = processBlocks(padded, K, steps);
+  document.getElementById('ciphertext').value = cipher;
+  
+  steps.push(`<span style="color:var(--accent)">✓ Final ciphertext: <span class="result">${cipher}</span></span>`);
+  setSteps(steps);
+}
+
+function decrypt() {
+  clearError();
+  const { valid, K } = validateMatrix();
+  if (!valid) { showError('Invalid key matrix — cannot compute inverse.'); return; }
+  
+  const inv = matrixInverseMod26(K);
+  let raw = document.getElementById('ciphertext').value;
+  let clean = sanitize(raw);
+  if (!clean) { showError('Please enter ciphertext to decrypt.'); return; }
+  if (clean.length % 2 !== 0) { showError('Ciphertext length must be even.'); return; }
+  
+  const steps = [];
+  const d = mod26(det(K));
+  const dInv = modInverse(d, 26);
+  steps.push(`Ciphertext input: <span class="highlight">${clean}</span>`);
+  steps.push(`det(K) = ${det(K)} ≡ <span class="highlight">${d}</span> (mod 26), modular inverse = <span class="highlight">${dInv}</span>`);
+  steps.push(`Inverse key K⁻¹ = [[${inv[0][0]},${inv[0][1]}],[${inv[1][0]},${inv[1][1]}]] (mod 26)`);
+  steps.push(`Decryption formula: P = (K⁻¹ × C) mod 26`);
+  
+  const plain = processBlocks(clean, inv, steps);
+  document.getElementById('plaintext').value = plain;
+  
+  steps.push(`<span style="color:var(--accent)">✓ Decrypted plaintext: <span class="result">${plain}</span></span>`);
+  setSteps(steps);
+}
+
+function clearAll() {
+  document.getElementById('plaintext').value = '';
+  document.getElementById('ciphertext').value = '';
+  document.getElementById('steps-panel').innerHTML = '<div class="empty-state">// Perform an encryption or decryption to see the detailed steps here</div>';
+  clearError();
+}
+</script>
+</body>
+</html>
